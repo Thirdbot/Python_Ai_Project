@@ -1,0 +1,20 @@
+{
+  "files": {
+    "datasets/chatbot_dataset.csv": [
+      "Question",
+      "Answer"
+    ],
+    "datasets/counsel_chat.csv": [
+      "questionID",
+      "questionTitle",
+      "questionText",
+      "questionLink",
+      "topic",
+      "therapistInfo",
+      "therapistURL",
+      "answerText",
+      "upvotes",
+      "views"
+    ]
+  }
+}
