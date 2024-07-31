@@ -13,7 +13,6 @@ import torch
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 torch.set_default_device('cuda')
 
-print(torch.cuda.is_available(),torch.cuda.device)
 class Program:
     def __init__(self) -> None:
         super(Program).__init__()
@@ -27,83 +26,139 @@ class Program:
         
         self.datapath = "datasets"
         self.batch = 1000
+        self.data_fetch = {'files':{}}
 
         self.file_json = self.find_datasets(self.datapath,".json")
         self.file_csv = self.find_datasets(self.datapath,".csv")
+        
+        self.make_file = False
+        self.inputs = None
+        self.outputs = None
 
-        if(self.CheckNeed(make_file=False)):
+        if(self.CheckNeed(make_file=self.make_file)):
             ###now its time for fetching daatasets each>>>>
-            INP,OUT = self.FetchDatasets('train')
+            couple_list = self.findcouple()
+            self.inputs = self.soupDatasets(couple_list,'train')
+            self.outputs = self.soupDatasets(couple_list,'train')
+            ##some model going on here
+                        
             ###coupling datasets (may be i not using json file or smt just runtime embeddings osmt)
             pass
         
 
     #aint test yet
-    def SoupDatasets(self,path,label,type,times):
-        for embed in self.getEmbedd(path,label,type,times):
-            print(embed)
-
-    #aint test yet
-    def getEmbedd(self,path,label,type,time):
-        make_path = "datasets\\"+path+"_embeddings.json"
-        file_data = self.load_jsons(make_path)
-        i = 0
-        for i in range(time):
-            yield file_data[type][label][i]['embeddings']
-            i += 1
-            
-    
-    def FetchDatasets(self,type):
-        #loop each datasets
-        info = self.load_jsons("file_info.json")
+    def soupDatasets(self,coupling_label,type):
+        saved = []
         for data_path in self.file_csv:
-            
-            couple = 2
-            #window sliding technique
-            labels = info['files']["datasets/"+data_path+".csv"]
-            if len(labels) > 2:
-                for index in range(0,len(labels)-couple):
-                    inp = labels[index:index+couple][0]
-                    out = labels[index:index+couple][1]
+                make_path = "datasets/"+data_path+"_embeddings.json"
+                embedd_file = self.load_jsons(make_path)
+                for couple in coupling_label:
+                    for label in couple:
+                        for rows in embedd_file[type][label]:
+                            saved.append(rows['embeddings'])
+        return saved
+
+    def fetchsoup(self,coupling_label,type):
+        saved = []
+        i = 0
+        for data_path in self.file_csv:
+                make_path = "datasets/"+data_path+".csv"
+                embedd_file = self.data_fetch['files'][make_path]
+                for couple in coupling_label[i]:
+                    i += 1
+                    for label in couple:
+                        for rows in embedd_file[type][label]:
+                            saved.append(rows['embeddings'])
+        return saved
+
+
+
+    def findcouple(self):
+            info = self.load_jsons("file_info.json")
+            store_couple = []
+            for data_path in self.file_csv:    
+                couple = 2
+                #window sliding technique
+                labels = info['files']["datasets/"+data_path+".csv"]
+                if len(labels) > 2:
+                    temp = []
+                    for index in range(0,len(labels)-couple):
+                        inp = labels[index:index+couple][0]
+                        out = labels[index:index+couple][1]
+                        print(inp, " --> " ,out)
+                        temp.append([inp,out])
+                    store_couple.append(temp)
+
+                elif len(labels) == 2:
+                    inp = labels[0]
+                    out = labels[1]
                     print(inp, " --> " ,out)
-                    #times is size of datasets
-                    self.SoupDatasets(data_path,inp,type,10)
-                    self.SoupDatasets(data_path,out,type,10)
-            elif len(labels) == 2:
-                inp = labels[0]
-                out = labels[1]
-                print(inp, " --> " ,out)
-                #times is size of datasets
-                self.SoupDatasets(data_path,inp,type,10)
-                self.SoupDatasets(data_path,out,type,10)
-            else:
-                return
+                    store_couple.append([[inp,out]])
+
+                else:
+                    return
+            print(store_couple)
+        
             
+    # def fetchEmbedd(self,type):
+    #     info = self.load_jsons("file_info.json")
+    #     for data_path in self.file_csv: 
+    #         couple = 2
+    #         label_path = "datasets/"+data_path+".csv"
+    #         labels = info['files']["datasets/"+data_path+".csv"]
+    #         if len(labels) > 2:
+    #             for index in range(0,len(labels)-couple):
+    #                 #coupling label
+    #                 inp = labels[index:index+couple][0]
+    #                 out = labels[index:index+couple][1]
+    #                 #feed label for outs of its label
+    #                 self.inputs = self.fetchsoup(label_path,inp,type)
+    #                 self.outputs = self.fetchsoup(label_path,out,type)
+    #         elif len(labels) == 2:
+                
+    #             inp = labels[0]
+    #             out = labels[1]
+    #             print(inp, " --> " ,out)
+    #             #times is size of datasets
+    #             self.inputs = self.fetchsoup(label_path,inp,type)
+    #             self.outputs = self.fetchsoup(label_path,out,type)
+    #         else:
+    #             return
+        
+    
     def load_jsons(self, file_path):
         with open(file_path, 'r') as f:
             return json.load(f)
         
     def CheckNeed(self,make_file):
         File_keep = [file.split("_embeddings")[0] for file in self.file_json]
+        datasets = Datasets()
         if make_file:
             for data in self.file_csv:
                 split_csv = os.path.splitext(data)[0]
                 if split_csv not in File_keep[:][:]:
-                    datasets = Datasets()
-                    datasets.datasets_iter([f"{self.datapath}//"+f"{data}"+".csv"],self.batch)
+                    datasets.datasets_iter([f"{self.datapath}/"+f"{data}"+".csv"],self.batch)
                 else:
                     continue
+            
         else:
             ##yield function     
             for data in self.file_csv:
                 #split_csv = os.path.splitext(data)[0]
-                datasets = Datasets()
-                path = self.datapath+"\\"+data+".csv"
+                
+                path = self.datapath+"/"+data+".csv"
                 print(path)
                 #batch
                 #C:\Users\astro\Desktop\python_env_project\python_Ai_Project\datasets
-                data_fetch = datasets.datasets_fetch(path,self.batch)
-                print(next(data_fetch))
+                file = next(datasets.datasets_fetch([path],self.batch))
+                #this is how its fetch
+                #print(file[path]['train']['Question'][11]['embeddings'])
+                self.data_fetch['files'].update(file)
+                
+                # for data in self.data_fetch:
+                #     pass
+                    #print(data[path]['train'])
+                    ##fetch data save tempo
         return True
 
 

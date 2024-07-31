@@ -13,7 +13,7 @@ import os
 #only two file of train test
 
 class Datasets:
-    def __init__(self,path='datasets',test_size=0.2,batch=10000) -> None:
+    def __init__(self,path='datasets',test_size=0.999,batch=10000) -> None:
         super().__init__()
         
         self.test_size = test_size
@@ -110,11 +110,13 @@ class Datasets:
     def datasets_fetch(self,datasets,batch):
         print("founded datasets: ",datasets)
         mem_file_path = "file_info.json"
+
         if os.path.exists(mem_file_path):
             with open(mem_file_path, 'r') as f:
                 mem = json.load(f)
         else:
             mem = {"files": {}}
+            
         # store_train = {'train':{}}
         # store_test = {'test':{}}
 
@@ -125,7 +127,7 @@ class Datasets:
             #directory construct
             store_datasets = {data_path: {'train': {}, 'test': {}}}
             
-
+            
             #load datasets with split train
             ds = load_dataset('csv',data_files=data_path,split='train')
             #make train/test datasets
@@ -151,19 +153,21 @@ class Datasets:
         
                 store_datasets[data_path]['train'][columns] = train_embedding
 
+                
+
                 mem['files'].update(mem_col)
                 self.save_to_json(mem_file_path,mem)
-            
 
-                test_corpus = self.get_test_corpus(split_datasets,batch)
-                print("operate at label: ",columns)
-                #embedded each columns each times appends
-                test_embedding = self.embedding(token_path=self.token_path,name=name,datasets=test_corpus,columns=columns,max_length=self.max_length,is_train=False)
+
+                # test_corpus = self.get_test_corpus(split_datasets,batch)
+                # print("operate at label: ",columns)
+                # #embedded each columns each times appends
+                # test_embedding = self.embedding(token_path=self.token_path,name=name,datasets=test_corpus,columns=columns,max_length=self.max_length,is_train=False)
                 
-                store_datasets[data_path]['test'][columns] = test_embedding
-
-                yield store_datasets
-        return store_datasets
+                # store_datasets[data_path]['test'][columns] = test_embedding
+                #yield store_datasets
+            yield store_datasets
+        #return store_datasets
                 
 
     
@@ -242,10 +246,17 @@ class Datasets:
         return embed_space
         
     def save_to_json(self,file_path,data):
-        with open(file_path, 'w') as f:
-            print(f"Open File {file_path} .")
-            json.dump(data, f,indent=2)
-        print("Close File.")
+        csvList = self.Datasets_Finder("datasets")
+        for path in csvList:
+            with open(file_path, 'r') as f:
+                load = json.load(f)
+                if path in load['files']:
+                    continue     
+                with open(file_path, 'w') as f:
+                    #print(f"Open File {file_path} .")
+                    print("-----")
+                    json.dump(data, f,indent=2)
+            print("Close File.")
 
 
 if __name__ == "__main__":
