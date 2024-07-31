@@ -38,11 +38,13 @@ class Program:
         if(self.CheckNeed(make_file=self.make_file)):
             ###now its time for fetching daatasets each>>>>
             couple_list = self.findcouple()
-            for datasets in couple_list:
+            for data_path in self.file_csv:
+                for datasets in couple_list:
                     for couple in datasets: 
-                        self.inputs = self.soupDatasets(couple[0],'train',self.make_file)
-                        self.outputs = self.soupDatasets(couple[1],'train',self.make_file)
-            print(next(self.inputs))
+                        print(f"Couplings:{couple[0]}:{couple[1]}")
+                        self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
+                        self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
+                        
             ##some model going on here
                         
             ###coupling datasets (may be i not using json file or smt just runtime embeddings osmt)
@@ -50,23 +52,21 @@ class Program:
         
 
     #aint test yet
-    def soupDatasets(self,label,type,make_file):
+    def soupDatasets(self,data_path,label,type,make_file):
         saved = []
         if make_file:
-            for data_path in self.file_csv:
-                make_path = "datasets/"+data_path+"_embeddings.json"
-                embedd_file = self.load_jsons(make_path)
-                for rows in embedd_file[type][label]:
-                    saved.append(rows['embeddings'])
-                yield saved
+            make_path = "datasets/"+data_path+"_embeddings.json"
+            embedd_file = self.load_jsons(make_path)
+            for rows in embedd_file[type][label]:
+                saved.append(rows['embeddings'])
+            return saved
         else:
-            for data_path in self.file_csv:
-                make_path = "datasets/"+data_path+".csv"
-                embedd_file = self.data_fetch['files'][make_path]
-                for rows in embedd_file[type]:
-                    print(rows.keys())
-                    saved.append(rows)
-                yield saved
+            make_path = "datasets/"+data_path+".csv"
+            embedd_file = self.data_fetch['files'][make_path]
+            #print(embedd_file[type].keys())
+            for rows in embedd_file[type][label]:
+                saved.append(rows['embeddings'])
+            return saved
 
     # def fetchsoup(self,coupling_label,type):
     #     saved = []
@@ -158,7 +158,7 @@ class Program:
                 print(path)
                 #batch
                 #C:\Users\astro\Desktop\python_env_project\python_Ai_Project\datasets
-                file = next(datasets.datasets_fetch([path],self.batch))
+                file = datasets.datasets_fetch([path],self.batch)
                 #this is how its fetch
                 #print(file[path]['train']['Question'][11]['embeddings'])
                 self.data_fetch['files'].update(file)

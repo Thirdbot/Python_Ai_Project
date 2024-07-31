@@ -166,8 +166,7 @@ class Datasets:
                 
                 # store_datasets[data_path]['test'][columns] = test_embedding
                 #yield store_datasets
-            yield store_datasets
-        #return store_datasets
+        return store_datasets
                 
 
     
