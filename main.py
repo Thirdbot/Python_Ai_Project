@@ -38,10 +38,10 @@ class Program:
         if(self.CheckNeed(make_file=self.make_file)):
             ###now its time for fetching daatasets each>>>>
             couple_list = self.findcouple()
-            for couple in couple_list:
-                    for label in couple: 
-                        self.inputs = self.soupDatasets(label,'train',self.make_file)
-                        self.outputs = self.soupDatasets(label,'train',self.make_file)
+            for datasets in couple_list:
+                    for couple in datasets: 
+                        self.inputs = self.soupDatasets(couple[0],'train',self.make_file)
+                        self.outputs = self.soupDatasets(couple[1],'train',self.make_file)
             print(next(self.inputs))
             ##some model going on here
                         
@@ -62,24 +62,24 @@ class Program:
         else:
             for data_path in self.file_csv:
                 make_path = "datasets/"+data_path+".csv"
-                embedd_file = self.data_fetch['files'][make_file][type]
-                for rows in embedd_file[label]:
-                    print(rows)
+                embedd_file = self.data_fetch['files'][make_path]
+                for rows in embedd_file[type]:
+                    print(rows.keys())
                     saved.append(rows)
                 yield saved
 
-    def fetchsoup(self,coupling_label,type):
-        saved = []
-        i = 0
-        for data_path in self.file_csv:
-                make_path = "datasets/"+data_path+".csv"
-                embedd_file = self.data_fetch['files'][make_path]
-                for couple in coupling_label[i]:
-                    i += 1
-                    for label in couple:
-                        for rows in embedd_file[type][label]:
-                            saved.append(rows['embeddings'])
-        return saved
+    # def fetchsoup(self,coupling_label,type):
+    #     saved = []
+    #     i = 0
+    #     for data_path in self.file_csv:
+    #             make_path = "datasets/"+data_path+".csv"
+    #             embedd_file = self.data_fetch['files'][make_path]
+    #             for couple in coupling_label[i]:
+    #                 i += 1
+    #                 for label in couple:
+    #                     for rows in embedd_file[type][label]:
+    #                         saved.append(rows['embeddings'])
+    #     return saved
 
 
 
@@ -95,14 +95,12 @@ class Program:
                     for index in range(0,len(labels)-couple):
                         inp = labels[index:index+couple][0]
                         out = labels[index:index+couple][1]
-                        print(inp, " --> " ,out)
                         temp.append([inp,out])
                     store_couple.append(temp)
 
                 elif len(labels) == 2:
                     inp = labels[0]
                     out = labels[1]
-                    print(inp, " --> " ,out)
                     store_couple.append([[inp,out]])
 
                 else:
