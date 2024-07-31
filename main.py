@@ -65,7 +65,6 @@ class Program:
                 embedd_file = self.data_fetch['files'][make_file][type]
                 for rows in embedd_file[label]:
                     print(rows)
-                    break
                     saved.append(rows)
                 yield saved
 
