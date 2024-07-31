@@ -13,17 +13,18 @@ import os
 #only two file of train test
 
 class Datasets:
-    def __init__(self,path='datasets',test_size=0.999,batch=10000) -> None:
+    def __init__(self,path='datasets',test_size=0.2,batch=10000) -> None:
         super().__init__()
         
         self.test_size = test_size
-        self.datasets_name = "shivangi19s/kids_chatbot_dataset_4"
+        #self.datasets_name = "shivangi19s/kids_chatbot_dataset_4"
         self.splits = 'train'
         self.batch = batch
         self.token_path = "tokenizer.json"
         self.max_length = 96
         self.path = path
-
+        #set default in-file changed
+        self.set_tokenizer = GPT2TokenizerFast(tokenizer_object = Tokenizer.from_file(self.token_path))
         
         #self.find_datasets = self.Datasets_Finder(self.path)
         
@@ -79,7 +80,7 @@ class Datasets:
                 store_datasets[data_path]['train'][columns] = train_embedding
 
             mem['files'].update(mem_col)
-            self.save_to_json(mem_file_path,mem)
+            self.save_mem_to_json(mem_file_path,mem)
             
             self.save_to_json(data=store_datasets[data_path],file_path=f"{name}_embeddings.json")
 
@@ -156,17 +157,17 @@ class Datasets:
                 
 
                 mem['files'].update(mem_col)
-                self.save_to_json(mem_file_path,mem)
+                self.save_mem_to_json(mem_file_path,mem)
 
 
-                # test_corpus = self.get_test_corpus(split_datasets,batch)
-                # print("operate at label: ",columns)
-                # #embedded each columns each times appends
-                # test_embedding = self.embedding(token_path=self.token_path,name=name,datasets=test_corpus,columns=columns,max_length=self.max_length,is_train=False)
+                test_corpus = self.get_test_corpus(split_datasets,batch)
+                print("operate at label: ",columns)
+                #embedded each columns each times appends
+                test_embedding = self.embedding(token_path=self.token_path,name=name,datasets=test_corpus,columns=columns,max_length=self.max_length,is_train=False)
                 
-                # store_datasets[data_path]['test'][columns] = test_embedding
-                #yield store_datasets
-        return store_datasets
+                store_datasets[data_path]['test'][columns] = test_embedding
+
+            return store_datasets
                 
 
     
@@ -238,13 +239,14 @@ class Datasets:
                 #     'embeddings': q_outputs.last_hidden_state.squeeze().tolist()
                 # }
                 q_embedding = {
+                    #'embeddings': q_inputs_tensor_id.squeeze().tolist()
                     'embeddings': q_outputs.last_hidden_state.squeeze().tolist()
                 }
 
                 embed_space.append(q_embedding)
         return embed_space
         
-    def save_to_json(self,file_path,data):
+    def save_mem_to_json(self,file_path,data):
         csvList = self.Datasets_Finder("datasets")
         for path in csvList:
             with open(file_path, 'r') as f:
@@ -256,8 +258,14 @@ class Datasets:
                     print("-----")
                     json.dump(data, f,indent=2)
             print("Close File.")
+    def save_to_json(self,file_path,data):
+        with open(file_path, 'w') as f:
+            json.dump(data, f,indent=2)
+            print("Close File.")
 
-
+    def decode(self,encode):
+        return self.set_tokenizer.batch_decode(encode)
+        
 if __name__ == "__main__":
     datasets = Datasets()
-    datasets.datasets_iter(datasets=datasets.find_datasets,batch=datasets.batch)
+    #datasets.datasets_iter(datasets=datasets.find_datasets,batch=datasets.batch)

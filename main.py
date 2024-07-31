@@ -31,20 +31,28 @@ class Program:
         self.file_json = self.find_datasets(self.datapath,".json")
         self.file_csv = self.find_datasets(self.datapath,".csv")
         
-        self.make_file = False
+        self.make_file = True
         self.inputs = None
         self.outputs = None
 
         if(self.CheckNeed(make_file=self.make_file)):
             ###now its time for fetching daatasets each>>>>
             couple_list = self.findcouple()
+            count = 0
             for data_path in self.file_csv:
-                for datasets in couple_list:
-                    for couple in datasets: 
-                        print(f"Couplings:{couple[0]}:{couple[1]}")
-                        self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
-                        self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
-                        
+                for couple in couple_list[count]:
+                    self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
+                    self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
+                    #question-answer pairs this way
+                    # print(self.inputs[0])
+                    # print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
+                    # datasets = Datasets()
+                    # print(datasets.decode(self.inputs))
+                    # print(self.outputs[0])
+                    # print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
+                    # print(datasets.decode(self.outputs))
+                    
+                count += 1
             ##some model going on here
                         
             ###coupling datasets (may be i not using json file or smt just runtime embeddings osmt)
@@ -54,6 +62,7 @@ class Program:
     #aint test yet
     def soupDatasets(self,data_path,label,type,make_file):
         saved = []
+        ##i guess make file work the same dunno dun test yet
         if make_file:
             make_path = "datasets/"+data_path+"_embeddings.json"
             embedd_file = self.load_jsons(make_path)
@@ -145,17 +154,17 @@ class Program:
             for data in self.file_csv:
                 split_csv = os.path.splitext(data)[0]
                 if split_csv not in File_keep[:][:]:
+                    print("making datasetable:")
                     datasets.datasets_iter([f"{self.datapath}/"+f"{data}"+".csv"],self.batch)
                 else:
                     continue
-            
         else:
             ##yield function     
             for data in self.file_csv:
                 #split_csv = os.path.splitext(data)[0]
                 
                 path = self.datapath+"/"+data+".csv"
-                print(path)
+                #print(path)
                 #batch
                 #C:\Users\astro\Desktop\python_env_project\python_Ai_Project\datasets
                 file = datasets.datasets_fetch([path],self.batch)
