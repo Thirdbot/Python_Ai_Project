@@ -38,8 +38,11 @@ class Program:
         if(self.CheckNeed(make_file=self.make_file)):
             ###now its time for fetching daatasets each>>>>
             couple_list = self.findcouple()
-            self.inputs = self.soupDatasets(couple_list,'train')
-            self.outputs = self.soupDatasets(couple_list,'train')
+            for couple in couple_list:
+                    for label in couple: 
+                        self.inputs = self.soupDatasets(label,'train',self.make_file)
+                        self.outputs = self.soupDatasets(label,'train',self.make_file)
+            print(next(self.inputs))
             ##some model going on here
                         
             ###coupling datasets (may be i not using json file or smt just runtime embeddings osmt)
@@ -47,16 +50,24 @@ class Program:
         
 
     #aint test yet
-    def soupDatasets(self,coupling_label,type):
+    def soupDatasets(self,label,type,make_file):
         saved = []
-        for data_path in self.file_csv:
+        if make_file:
+            for data_path in self.file_csv:
                 make_path = "datasets/"+data_path+"_embeddings.json"
                 embedd_file = self.load_jsons(make_path)
-                for couple in coupling_label:
-                    for label in couple:
-                        for rows in embedd_file[type][label]:
-                            saved.append(rows['embeddings'])
-        return saved
+                for rows in embedd_file[type][label]:
+                    saved.append(rows['embeddings'])
+                yield saved
+        else:
+            for data_path in self.file_csv:
+                make_path = "datasets/"+data_path+".csv"
+                embedd_file = self.data_fetch['files'][make_file][type]
+                for rows in embedd_file[label]:
+                    print(rows)
+                    break
+                    saved.append(rows)
+                yield saved
 
     def fetchsoup(self,coupling_label,type):
         saved = []
@@ -97,7 +108,7 @@ class Program:
 
                 else:
                     return
-            print(store_couple)
+            return store_couple
         
             
     # def fetchEmbedd(self,type):
