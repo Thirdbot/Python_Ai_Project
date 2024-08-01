@@ -55,6 +55,9 @@ class Program:
                     # print(self.outputs[0])
                     # print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
                     # print(datasets.decode(self.outputs))
+
+                    #####IT TIME FOR MODEL
+                    
                     
                 count += 1
             ##some model going on here
