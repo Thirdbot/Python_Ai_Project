@@ -12,6 +12,7 @@ import torch
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 torch.set_default_device('cuda')
+print(torch.get_default_device())
 
 class Program:
     def __init__(self) -> None:
@@ -28,10 +29,12 @@ class Program:
         self.batch = 1000
         self.data_fetch = {'files':{}}
 
+
         self.file_json = self.find_datasets(self.datapath,".json")
         self.file_csv = self.find_datasets(self.datapath,".csv")
         
-        self.make_file = True
+        #recommend turn to False just to re embeddings it each time(faster than fetch through .json file)
+        self.make_file = False
         self.inputs = None
         self.outputs = None
 
@@ -60,18 +63,19 @@ class Program:
             pass
         
 
-    #aint test yet
+    #it work
     def soupDatasets(self,data_path,label,type,make_file):
         saved = []
-        ##i guess make file work the same dunno dun test yet
+        ##i guess make file work the same dunno dun test yet spoiled IT WORK BUT SLOW ASS NOT RECOMMEND TO USE UNLESS YOU HAVE TIME
         if make_file:
-            make_path = "datasets/"+data_path+"_embeddings.json"
+            make_path = f"datasets/{data_path}_embeddings.json"
             embedd_file = self.load_jsons(make_path)
+            print(embedd_file[type].keys())
             for rows in embedd_file[type][label]:
                 saved.append(rows['embeddings'])
             return saved
         else:
-            make_path = "datasets/"+data_path+".csv"
+            make_path = f"datasets/{data_path}.csv"
             embedd_file = self.data_fetch['files'][make_path]
             #print(embedd_file[type].keys())
             for rows in embedd_file[type][label]:
@@ -145,18 +149,21 @@ class Program:
         
     
     def load_jsons(self, file_path):
-        with open(file_path, 'r') as f:
-            return json.load(f)
-        
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                return json.load(f)
+        else:
+            raise FileNotFoundError(f"The file {file_path} does not exist.")
+            
     def CheckNeed(self,make_file):
         File_keep = [file.split("_embeddings")[0] for file in self.file_json]
-        datasets = Datasets()
+        setsdata = Datasets()
         if make_file:
             for data in self.file_csv:
                 split_csv = os.path.splitext(data)[0]
                 if split_csv not in File_keep[:][:]:
                     print("making datasetable:")
-                    datasets.datasets_iter([f"{self.datapath}/"+f"{data}"+".csv"],self.batch)
+                    setsdata.datasets_iter([f"{self.datapath}/"+f"{data}"+".csv"],self.batch)
                 else:
                     continue
         else:
@@ -168,7 +175,7 @@ class Program:
                 #print(path)
                 #batch
                 #C:\Users\astro\Desktop\python_env_project\python_Ai_Project\datasets
-                file = datasets.datasets_fetch([path],self.batch)
+                file = setsdata.datasets_fetch([path],self.batch)
                 #this is how its fetch
                 #print(file[path]['train']['Question'][11]['embeddings'])
                 self.data_fetch['files'].update(file)

@@ -239,8 +239,8 @@ class Datasets:
                 #     'embeddings': q_outputs.last_hidden_state.squeeze().tolist()
                 # }
                 q_embedding = {
-                    #'embeddings': q_inputs_tensor_id.squeeze().tolist()
-                    'embeddings': q_outputs.last_hidden_state.squeeze().tolist()
+                    'embeddings': q_inputs_tensor_id.squeeze().tolist()
+                    #'embeddings': q_outputs.last_hidden_state.squeeze().tolist()
                 }
 
                 embed_space.append(q_embedding)
