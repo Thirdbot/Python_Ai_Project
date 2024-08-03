@@ -21,10 +21,12 @@ class Datasets:
         self.splits = 'train'
         self.batch = batch
         self.token_path = "tokenizer.json"
-        self.max_length = 96
+        self.max_length = 25000
         self.path = path
         #set default in-file changed
         self.set_tokenizer = GPT2TokenizerFast(tokenizer_object = Tokenizer.from_file(self.token_path))
+        self.set_tokenizer.pad_token = self.set_tokenizer.eos_token
+        self.set_tokenizer.bos_token = self.set_tokenizer.bos_token
         
         #self.find_datasets = self.Datasets_Finder(self.path)
         
@@ -239,8 +241,8 @@ class Datasets:
                 #     'embeddings': q_outputs.last_hidden_state.squeeze().tolist()
                 # }
                 q_embedding = {
-                    'embeddings': q_inputs_tensor_id.squeeze().tolist()
-                    #'embeddings': q_outputs.last_hidden_state.squeeze().tolist()
+                    #'embeddings': q_inputs_tensor_id.squeeze().tolist()
+                    'embeddings': q_outputs.last_hidden_state.squeeze().tolist()
                 }
 
                 embed_space.append(q_embedding)

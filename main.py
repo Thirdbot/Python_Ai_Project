@@ -85,21 +85,6 @@ class Program:
                 saved.append(rows['embeddings'])
             return saved
 
-    # def fetchsoup(self,coupling_label,type):
-    #     saved = []
-    #     i = 0
-    #     for data_path in self.file_csv:
-    #             make_path = "datasets/"+data_path+".csv"
-    #             embedd_file = self.data_fetch['files'][make_path]
-    #             for couple in coupling_label[i]:
-    #                 i += 1
-    #                 for label in couple:
-    #                     for rows in embedd_file[type][label]:
-    #                         saved.append(rows['embeddings'])
-    #     return saved
-
-
-
     def findcouple(self):
             info = self.load_jsons("file_info.json")
             store_couple = []
@@ -125,32 +110,6 @@ class Program:
             return store_couple
         
             
-    # def fetchEmbedd(self,type):
-    #     info = self.load_jsons("file_info.json")
-    #     for data_path in self.file_csv: 
-    #         couple = 2
-    #         label_path = "datasets/"+data_path+".csv"
-    #         labels = info['files']["datasets/"+data_path+".csv"]
-    #         if len(labels) > 2:
-    #             for index in range(0,len(labels)-couple):
-    #                 #coupling label
-    #                 inp = labels[index:index+couple][0]
-    #                 out = labels[index:index+couple][1]
-    #                 #feed label for outs of its label
-    #                 self.inputs = self.fetchsoup(label_path,inp,type)
-    #                 self.outputs = self.fetchsoup(label_path,out,type)
-    #         elif len(labels) == 2:
-                
-    #             inp = labels[0]
-    #             out = labels[1]
-    #             print(inp, " --> " ,out)
-    #             #times is size of datasets
-    #             self.inputs = self.fetchsoup(label_path,inp,type)
-    #             self.outputs = self.fetchsoup(label_path,out,type)
-    #         else:
-    #             return
-        
-    
     def load_jsons(self, file_path):
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
@@ -177,16 +136,12 @@ class Program:
                 path = self.datapath+"/"+data+".csv"
                 #print(path)
                 #batch
-                #C:\Users\astro\Desktop\python_env_project\python_Ai_Project\datasets
+
                 file = setsdata.datasets_fetch([path],self.batch)
                 #this is how its fetch
                 #print(file[path]['train']['Question'][11]['embeddings'])
                 self.data_fetch['files'].update(file)
                 
-                # for data in self.data_fetch:
-                #     pass
-                    #print(data[path]['train'])
-                    ##fetch data save tempo
         return True
 
 
