@@ -13,7 +13,7 @@ torch.set_default_device('cuda')
 class Transformer:
     def __init__(self) -> None:
 
-        self.word_size = 25000
+        self.word_size = 100
         self.hiddensize = 1000
         self.ndim = 768
         self.lr = 0.1

@@ -50,7 +50,7 @@ class Program:
                 for couple in couple_list[count]:
                     self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                     self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
-                    model.runtrain(self.inputs[0],self.outputs[0])
+                    model.runtrain(self.inputs,self.outputs)
                     FILE = "data.pth"
                     data = torch.load(FILE)
                     model_state = data["model_state"]
