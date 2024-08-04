@@ -11,10 +11,7 @@
       "questionLink",
       "topic",
       "therapistInfo",
-      "therapistURL",
-      "answerText",
-      "upvotes",
-      "views"
+      "therapistURL"
     ]
   }
 }

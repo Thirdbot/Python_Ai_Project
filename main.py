@@ -8,6 +8,8 @@ from tokenizers import Tokenizer
 from transformers import PreTrainedTokenizerFast
 from transformers import GPT2TokenizerFast
 import torch
+from transformer_model import *
+
 
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
@@ -43,10 +45,16 @@ class Program:
             
             couple_list = self.findcouple()
             count = 0
+            model = Transformer()
             for data_path in self.file_csv:
                 for couple in couple_list[count]:
                     self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                     self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
+                    model.runtrain(self.inputs,self.outputs)
+                    FILE = "data.pth"
+                    data = torch.load(FILE)
+                    model_state = data["model_state"]
+                    
                     #question-answer pairs this way
                     # print(self.inputs[0])
                     # print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
