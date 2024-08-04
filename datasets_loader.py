@@ -13,7 +13,7 @@ import os
 #only two file of train test
 
 class Datasets:
-    def __init__(self,path='datasets',test_size=0.2,batch=10000) -> None:
+    def __init__(self,path='datasets',test_size=0.2,batch=1000) -> None:
         super().__init__()
         
         self.test_size = test_size
@@ -21,7 +21,7 @@ class Datasets:
         self.splits = 'train'
         self.batch = batch
         self.token_path = "tokenizer.json"
-        self.max_length = 25000
+        self.max_length = 100
         self.path = path
         #set default in-file changed
         self.set_tokenizer = GPT2TokenizerFast(tokenizer_object = Tokenizer.from_file(self.token_path))
@@ -161,7 +161,7 @@ class Datasets:
                 mem['files'].update(mem_col)
                 self.save_mem_to_json(mem_file_path,mem)
 
-
+            for columns in features:
                 test_corpus = self.get_test_corpus(split_datasets,batch)
                 print("operate at label: ",columns)
                 #embedded each columns each times appends
@@ -227,7 +227,7 @@ class Datasets:
                 print(f"{save_name} {label}:{rowcount}",row)
 
 
-                q_encode = self.set_tokenizer.encode_plus(str(row), padding=True,add_special_tokens = True,truncation=True,return_attention_mask = True,max_length=max_length, return_tensors='pt')
+                q_encode = self.set_tokenizer.encode_plus(str(row),add_special_tokens = True,truncation=True,return_attention_mask = True,max_length=max_length, return_tensors='pt')
                 
                 q_inputs_tensor_id = q_encode['input_ids']
                 q_inputs_tensor_mask = q_encode['attention_mask']

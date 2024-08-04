@@ -17,21 +17,21 @@ class Transformer:
         self.hiddensize = 1000
         self.ndim = 768
         self.lr = 0.1
-        self.input = "hello, my name is Third."
-        self.output = "hello, my name is Bot."
+        # self.input = "hello, my name is Third."
+        # self.output = "hello, my name is Bot."
 
         
-        self.batchinput  = [c for c in self.input]
-        self.batchoutput  = [c for c in self.output]
+        # self.batchinput  = [c for c in self.input]
+        # self.batchoutput  = [c for c in self.output]
 
-        self.inputsList = self.ListEmbeddings(self.batchinput)
-        self.outputsList = self.ListEmbeddings(self.batchoutput)
+        # self.inputsList = self.ListEmbeddings(self.batchinput)
+        # self.outputsList = self.ListEmbeddings(self.batchoutput)
         
         self.n_epochs = 2000
         
         
-        self.runtrain(self.inputsList,self.outputsList)
-        self.test_input()
+        # self.runtrain(self.inputsList,self.outputsList)
+        # self.test_input()
         
         # for param_tensor in self.model.state_dict():
         #     print(param_tensor, "\t", self.model.state_dict()[param_tensor].size())
@@ -78,7 +78,7 @@ class Transformer:
         datasets_Detail = Datasets()
         embeds = []
         for input in list_input:
-            embed_input = datasets_Detail.set_tokenizer.encode_plus(input, padding=True,add_special_tokens = True,truncation=True,return_attention_mask = True,max_length=self.word_size, return_tensors='pt')
+            embed_input = datasets_Detail.set_tokenizer.encode_plus(input, padding='max_length',truncation=True,add_special_tokens = True,return_attention_mask = True,max_length=self.word_size, return_tensors='pt')
             embedded_model = GPT2Model.from_pretrained('gpt2')
             tensor_id = embed_input['input_ids']
             tensor_mask = embed_input['attention_mask']

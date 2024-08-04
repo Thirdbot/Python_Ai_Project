@@ -50,12 +50,13 @@ class Program:
                 for couple in couple_list[count]:
                     self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                     self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
-                    model.runtrain(self.inputs,self.outputs)
+                    model.runtrain(self.inputs[0],self.outputs[0])
                     FILE = "data.pth"
                     data = torch.load(FILE)
                     model_state = data["model_state"]
                     
                     #question-answer pairs this way
+                    #train
                     # print(self.inputs[0])
                     # print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
                     # datasets = Datasets()
