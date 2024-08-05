@@ -64,7 +64,7 @@ class Transformer:
     def runtrain(self,inputs,outs):
         batchinput = [c for c in inputs]
         batchoutput = [c for c in outs]
-        self.feedmodel(batchinput[0],batchoutput[0],hiddensize=self.hiddensize,ndim=self.ndim)
+        self.feedmodel(batchinput,batchoutput,hiddensize=self.hiddensize,ndim=self.ndim)
         
         
             # if prob.item() > 0.75:
