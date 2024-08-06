@@ -9,7 +9,7 @@ from transformers import PreTrainedTokenizerFast
 from transformers import GPT2TokenizerFast
 import torch
 from transformer_model import *
-
+import json
 
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
@@ -122,12 +122,8 @@ class Program:
         
             
     def load_jsons(self, file_path):
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                print("load json")
-                return json.load(f)
-        else:
-            raise FileNotFoundError(f"The file {file_path} does not exist.")
+        with open(file_path, 'r') as f:
+            return json.load(f)
             
     def CheckNeed(self,make_file):
         File_keep = [file.split("_embeddings")[0] for file in self.file_json]

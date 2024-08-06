@@ -227,14 +227,17 @@ class Datasets:
                 print(f"{save_name} {label}:{rowcount}",row)
 
 
-                q_encode = self.set_tokenizer.encode_plus(str(row),add_special_tokens = True,return_attention_mask = True, return_tensors='pt')
+                q_encode = self.set_tokenizer.encode_plus(str(row),padding='max_length',max_length=max_length,truncation=True,add_special_tokens = True,return_attention_mask = True, return_tensors='pt')
                 
                 q_inputs_tensor_id = q_encode['input_ids']
                 q_inputs_tensor_mask = q_encode['attention_mask']
 
+                #print(q_encode)
                 #print(f"with id: {q_inputs_tensor_id} with size: {len(q_inputs_tensor_id[0])}")
                 with torch.no_grad():
                         q_outputs = model(q_inputs_tensor_id, attention_mask=q_inputs_tensor_mask)
+
+                print(q_outputs.last_hidden_state.squeeze().shape)
                 # q_embedding = {
                 #     'input_ids': q_inputs_tensor_id.squeeze().tolist(),
                 #     'attention_mask': q_inputs_tensor_mask.squeeze().tolist(),
