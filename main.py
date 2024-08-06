@@ -13,8 +13,9 @@ from transformer_model import *
 
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_default_device('cuda')
-print(torch.get_default_device())
+print(device)
 
 class Program:
     def __init__(self) -> None:
@@ -36,7 +37,7 @@ class Program:
         self.file_csv = self.find_datasets(self.datapath,".csv")
         
         #recommend turn to False just to re embeddings it each time(faster than fetch through .json file)
-        self.make_file = False
+        self.make_file = True
         self.inputs = None
         self.outputs = None
 
@@ -50,6 +51,7 @@ class Program:
                 for couple in couple_list[count]:
                     self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                     self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
+                    print(f"run model: {couple}")
                     model.runtrain(self.inputs,self.outputs)
                     FILE = "data.pth"
                     data = torch.load(FILE)
@@ -81,8 +83,8 @@ class Program:
         ##i guess make file work the same dunno dun test yet spoiled IT WORK BUT SLOW ASS NOT RECOMMEND TO USE UNLESS YOU HAVE TIME
         if make_file:
             make_path = f"datasets/{data_path}_embeddings.json"
+            print("load json.")
             embedd_file = self.load_jsons(make_path)
-            print(embedd_file[type].keys())
             for rows in embedd_file[type][label]:
                 saved.append(rows['embeddings'])
             return saved
@@ -122,6 +124,7 @@ class Program:
     def load_jsons(self, file_path):
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
+                print("load json")
                 return json.load(f)
         else:
             raise FileNotFoundError(f"The file {file_path} does not exist.")
@@ -133,9 +136,9 @@ class Program:
             for data in self.file_csv:
                 split_csv = os.path.splitext(data)[0]
                 if split_csv not in File_keep[:][:]:
-                    print("making datasetable:")
                     setsdata.datasets_iter([f"{self.datapath}/"+f"{data}"+".csv"],self.batch)
                 else:
+                    print("passed.")
                     continue
         else:
             ##yield function     

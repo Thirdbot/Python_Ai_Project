@@ -227,7 +227,7 @@ class Datasets:
                 print(f"{save_name} {label}:{rowcount}",row)
 
 
-                q_encode = self.set_tokenizer.encode_plus(str(row),add_special_tokens = True,truncation=True,return_attention_mask = True,max_length=max_length, return_tensors='pt')
+                q_encode = self.set_tokenizer.encode_plus(str(row),add_special_tokens = True,return_attention_mask = True, return_tensors='pt')
                 
                 q_inputs_tensor_id = q_encode['input_ids']
                 q_inputs_tensor_mask = q_encode['attention_mask']
