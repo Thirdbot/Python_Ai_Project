@@ -7,7 +7,7 @@ import torch
 import json
 import os
 import pandas as pd
-import pyarrow.parquet as pq
+
 
 # todo:
 #make it handle multiple datasets
@@ -84,14 +84,16 @@ class Datasets:
                 store_datasets[data_path]['train'][columns] = train_embedding
 
             
-            
+            mem['files'].update(mem_col)
+            self.save_mem_to_json(mem_file_path,mem)
+            self.save_to_parquet(data=store_datasets[data_path],file_path=f"{name}_embeddings.parquet")
             #self.save_to_lmdb(data=store_datasets[data_path],file_path=f"{name}_embeddings.lmdb")
 
             #store_datasets[data_path].update(store_train)
             #print(store_datasets[data_path]['train'][0])
             #self.save_to_json(data=store_datasets[data_path],file_path=f"{name}_embeddings.json")
 
-            #for columns in features:
+            for columns in features:
                 #store_features = {columns:[]}
 
                 test_corpus = self.get_test_corpus(split_datasets,batch)
@@ -106,8 +108,7 @@ class Datasets:
                 
             #store_datasets[data_path].update(store_test)
             
-            mem['files'].update(mem_col)
-            self.save_mem_to_json(mem_file_path,mem)
+            
             self.save_to_parquet(data=store_datasets[data_path],file_path=f"{name}_embeddings.parquet")
             
 
@@ -269,9 +270,9 @@ class Datasets:
 
 
     def save_to_parquet(self,file_path,data):
-        df = pd.DataFrame(data)
+        df = pd.json_normalize(data, sep='_')
         print("Save Files.")
-        df.to_parquet(file_path)
+        df.to_parquet(file_path,index=False)
 
 
     def decode(self,encode):

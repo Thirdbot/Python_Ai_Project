@@ -12,7 +12,6 @@ from transformer_model import *
 import pandas as pd
 
 
-
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_default_device('cuda')
@@ -86,13 +85,15 @@ class Program:
         if make_file:
             make_path = f"datasets/{data_path}_embeddings.parquet"
             print("soup json.")
-            for batch in pq.read_table(make_path).to_batches():
-                df_chunk = batch.to_pandas()
-                print(df_chunk)
+
+            # file_size = os.path.getsize(make_path)
+            # print(f"File size: {file_size / (1024 * 1024)} MB")
+
             embedd_file = self.load_parquet(make_path)
+            print(embedd_file)
             for rows in embedd_file[type+"_"+label]:
                 print(rows)
-                #saved.append(rows['embeddings'])
+                saved.append(rows['embeddings'])
             return saved
         else:
             make_path = f"datasets/{data_path}.csv"
@@ -127,8 +128,8 @@ class Program:
             return store_couple
         
     def load_parquet(self,file_path):
-        df = pd.read_parquet(file_path)
-        print(df.info())
+        df = pd.read_parquet(file_path,columns=['train_Question', 'train_Answer'])
+        print(df.shape)
         return df.to_dict()
         
     def load_jsons(self, file_path):
