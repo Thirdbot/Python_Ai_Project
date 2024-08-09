@@ -4,9 +4,10 @@ from transformers import GPT2TokenizerFast,BertModel,GPT2Model
 from tokenizers import Tokenizer
 import numpy as np
 import torch
-import ujson
+import json
 import os
-
+import pandas as pd
+import pyarrow.parquet as pq
 
 # todo:
 #make it handle multiple datasets
@@ -38,7 +39,7 @@ class Datasets:
         mem_file_path = "file_info.json"
         if os.path.exists(mem_file_path):
             with open(mem_file_path, 'r') as f:
-                mem = ujson.load(f)
+                mem = json.load(f)
         else:
             mem = {"files": {}}
         # store_train = {'train':{}}
@@ -82,10 +83,9 @@ class Datasets:
                 #store_datasets[data_path]['train'].update(store_features)
                 store_datasets[data_path]['train'][columns] = train_embedding
 
-            mem['files'].update(mem_col)
-            self.save_mem_to_json(mem_file_path,mem)
             
-            self.save_to_json(data=store_datasets[data_path],file_path=f"{name}_embeddings.json")
+            
+            #self.save_to_lmdb(data=store_datasets[data_path],file_path=f"{name}_embeddings.lmdb")
 
             #store_datasets[data_path].update(store_train)
             #print(store_datasets[data_path]['train'][0])
@@ -94,7 +94,6 @@ class Datasets:
             #for columns in features:
                 #store_features = {columns:[]}
 
-            for columns in features:
                 test_corpus = self.get_test_corpus(split_datasets,batch)
                 print("operate at label: ",columns)
                 #embedded each columns each times appends
@@ -107,8 +106,9 @@ class Datasets:
                 
             #store_datasets[data_path].update(store_test)
             
-            
-            self.save_to_json(data=store_datasets[data_path],file_path=f"{name}_embeddings.json")
+            mem['files'].update(mem_col)
+            self.save_mem_to_json(mem_file_path,mem)
+            self.save_to_parquet(data=store_datasets[data_path],file_path=f"{name}_embeddings.parquet")
             
 
     def datasets_fetch(self,datasets,batch):
@@ -117,7 +117,7 @@ class Datasets:
 
         if os.path.exists(mem_file_path):
             with open(mem_file_path, 'r') as f:
-                mem = ujson.load(f)
+                mem = json.load(f)
         else:
             mem = {"files": {}}
             
@@ -257,18 +257,22 @@ class Datasets:
         csvList = self.Datasets_Finder("datasets")
         for path in csvList:
             with open(file_path, 'r') as f:
-                load = ujson.load(f)
+                load = json.load(f)
                 if path in load['files']:
                     continue     
                 with open(file_path, 'w') as f:
                     #print(f"Open File {file_path} .")
                     print("-----")
-                    ujson.dump(data, f,indent=2)
+                    json.dump(data, f,indent=2)
             print("Close File.")
-    def save_to_json(self,file_path,data):
-        with open(file_path, 'w') as f:
-            ujson.dump(data, f,indent=2)
-            print("Close File.")
+
+
+
+    def save_to_parquet(self,file_path,data):
+        df = pd.DataFrame(data)
+        print("Save Files.")
+        df.to_parquet(file_path)
+
 
     def decode(self,encode):
         return self.set_tokenizer.batch_decode(encode)

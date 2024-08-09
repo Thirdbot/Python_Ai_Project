@@ -34,7 +34,7 @@ class Program:
         self.data_fetch = {'files':{}}
 
 
-        self.file_json = self.find_datasets(self.datapath,".json")
+        self.file_parquet = self.find_datasets(self.datapath,".parquet")
         self.file_csv = self.find_datasets(self.datapath,".csv")
         
         #recommend turn to False just to re embeddings it each time(faster than fetch through .json file)
@@ -84,13 +84,15 @@ class Program:
         saved = []
         #Both of these need to change
         if make_file:
-            make_path = f"datasets/{data_path}_embeddings.json"
+            make_path = f"datasets/{data_path}_embeddings.parquet"
             print("soup json.")
-            embedd_file = self.load_jsons(make_path)
-            print(embedd_file)
-            for rows in embedd_file[type][label]:
+            for batch in pq.read_table(make_path).to_batches():
+                df_chunk = batch.to_pandas()
+                print(df_chunk)
+            embedd_file = self.load_parquet(make_path)
+            for rows in embedd_file[type+"_"+label]:
                 print(rows)
-                saved.append(rows['embeddings'])
+                #saved.append(rows['embeddings'])
             return saved
         else:
             make_path = f"datasets/{data_path}.csv"
@@ -124,33 +126,19 @@ class Program:
                     return
             return store_couple
         
-            
+    def load_parquet(self,file_path):
+        df = pd.read_parquet(file_path)
+        print(df.info())
+        return df.to_dict()
+        
     def load_jsons(self, file_path):
-        # lj = {}
-        # with open(file_path, 'r') as f:
-        #     buffer = ''
-        #     while True:
-        #         chunk = f.read(512*512)
-        #         if not chunk:
-        #             break
-        #         buffer += chunk
-        #         # Attempt to load the JSON data from the buffer
-        #         try:
-        #             data = json.loads(buffer)
-        #             print(data)
-        #             lj.update(data)
-        #             buffer = ''  # Reset buffer after processing
-        #         except json.JSONDecodeError:
-        #             # Not a complete JSON object yet, continue reading
-        #             continue
-        # return lj
         with open(file_path, 'rb') as file:
             df = pd.read_json(file)
             return df.to_dict()
             
             
     def CheckNeed(self,make_file):
-        File_keep = [file.split("_embeddings")[0] for file in self.file_json]
+        File_keep = [file.split("_embeddings")[0] for file in self.file_parquet]
         setsdata = Datasets()
         if make_file:
             for data in self.file_csv:
