@@ -29,7 +29,7 @@ class Program:
             Program()
         
         self.datapath = "datasets"
-        self.batch = 1000
+        self.batch = 10
         self.data_fetch = {'files':{}}
 
 
@@ -80,7 +80,7 @@ class Program:
     #it work
     def soupDatasets(self,data_path,label,type,make_file):
         saved = []
-        ##i guess make file work the same dunno dun test yet spoiled IT WORK BUT SLOW ASS NOT RECOMMEND TO USE UNLESS YOU HAVE TIME
+        #Both of these need to change
         if make_file:
             make_path = f"datasets/{data_path}_embeddings.json"
             print("load json.")

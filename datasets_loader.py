@@ -27,7 +27,8 @@ class Datasets:
         self.set_tokenizer = GPT2TokenizerFast(tokenizer_object = Tokenizer.from_file(self.token_path))
         self.set_tokenizer.pad_token = self.set_tokenizer.eos_token
         self.set_tokenizer.bos_token = self.set_tokenizer.bos_token
-        
+        self.model = GPT2Model.from_pretrained('gpt2').cuda()
+        self.model.eval()
         #self.find_datasets = self.Datasets_Finder(self.path)
         
 
@@ -161,7 +162,6 @@ class Datasets:
                 mem['files'].update(mem_col)
                 self.save_mem_to_json(mem_file_path,mem)
 
-            for columns in features:
                 test_corpus = self.get_test_corpus(split_datasets,batch)
                 print("operate at label: ",columns)
                 #embedded each columns each times appends
@@ -198,13 +198,9 @@ class Datasets:
         embed_space = []
         save_name = None
         #model = BertModel.from_pretrained('bert-base-uncased')
-        model = GPT2Model.from_pretrained('gpt2')
-        new_tokenizer = Tokenizer.from_file(token_path)
-
-        self.set_tokenizer = GPT2TokenizerFast(tokenizer_object=new_tokenizer)
-        #tokenizer setting
-        self.set_tokenizer.pad_token = self.set_tokenizer.eos_token
-        self.set_tokenizer.bos_token = self.set_tokenizer.bos_token
+       
+        
+       
         #embeddings tokens
 
         if is_train:
@@ -217,25 +213,30 @@ class Datasets:
         rowcount = 0
 
         for data in data_get:
-            for row in data[label]:
-                #alternative is change it to str(datasets) using pandas
-                if row == None:
-                        row = 'None'
-
-                rowcount += 1
+            #for row in data[label]:
+                #clean data
+                if None in data[label]:
+                    data[label][data[label].index(None)] = "None"
                 
-                print(f"{save_name} {label}:{rowcount}",row)
+                for c in data[label]:
+                    if type(c) is not type(str()):
+                        data[label][data[label].index(c)] = str(c)
+                    else:
+                        continue
+                rowcount += len(data[label])
+                print(data[label])
+                print(f"{save_name} {label}:{rowcount}")
 
 
-                q_encode = self.set_tokenizer.encode_plus(str(row),padding='max_length',max_length=max_length,truncation=True,add_special_tokens = True,return_attention_mask = True, return_tensors='pt')
+                q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding='longest',max_length=max_length,truncation=True,add_special_tokens = True,return_attention_mask = True, return_tensors='pt')
                 
-                q_inputs_tensor_id = q_encode['input_ids']
-                q_inputs_tensor_mask = q_encode['attention_mask']
+                q_inputs_tensor_id = q_encode['input_ids'].cuda()
+                q_inputs_tensor_mask = q_encode['attention_mask'].cuda()
 
                 #print(q_encode)
                 #print(f"with id: {q_inputs_tensor_id} with size: {len(q_inputs_tensor_id[0])}")
                 with torch.no_grad():
-                        q_outputs = model(q_inputs_tensor_id, attention_mask=q_inputs_tensor_mask)
+                        q_outputs = self.model(q_inputs_tensor_id, attention_mask=q_inputs_tensor_mask)
 
                 
                 # q_embedding = {
@@ -247,6 +248,8 @@ class Datasets:
                     #'embeddings': q_inputs_tensor_id.squeeze().tolist()
                     'embeddings': q_outputs.last_hidden_state.squeeze().tolist()
                 }
+                print("embeddings shape: ",q_outputs.last_hidden_state.squeeze().shape)
+
                 embed_space.append(q_embedding)
         return embed_space
         
