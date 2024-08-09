@@ -10,7 +10,8 @@ from transformers import GPT2TokenizerFast
 import torch
 from transformer_model import *
 import pandas as pd
-
+import pyarrow.parquet as pq
+import dask.dataframe as dd
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -85,7 +86,8 @@ class Program:
         if make_file:
             make_path = f"datasets/{data_path}_embeddings.parquet"
             print("soup json.")
-
+            parquet_file = pq.ParquetFile(make_path)
+            print(parquet_file.metadata)
             # file_size = os.path.getsize(make_path)
             # print(f"File size: {file_size / (1024 * 1024)} MB")
 
@@ -128,10 +130,12 @@ class Program:
             return store_couple
         
     def load_parquet(self,file_path):
-        df = pd.read_parquet(file_path,columns=['train_Question', 'train_Answer'])
-        print(df.shape)
-        return df.to_dict()
-        
+        df = pq.read_table(file_path,memory_map=True)
+        # return df.to_dict()
+        # table = pq.read_table(file_path)
+        # df = table.to_pandas()
+        return df.to_pandas()
+
     def load_jsons(self, file_path):
         with open(file_path, 'rb') as file:
             df = pd.read_json(file)

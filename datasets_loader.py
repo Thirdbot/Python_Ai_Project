@@ -7,7 +7,7 @@ import torch
 import json
 import os
 import pandas as pd
-
+import pyarrow.parquet as pq
 
 # todo:
 #make it handle multiple datasets
@@ -270,9 +270,11 @@ class Datasets:
 
 
     def save_to_parquet(self,file_path,data):
+        
         df = pd.json_normalize(data, sep='_')
         print("Save Files.")
-        df.to_parquet(file_path,index=False)
+        #pq.write_table(df,file_path)
+        df.to_parquet(file_path,engine='auto',compression='gzip',index=False)
 
 
     def decode(self,encode):
