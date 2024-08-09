@@ -9,7 +9,8 @@ from transformers import PreTrainedTokenizerFast
 from transformers import GPT2TokenizerFast
 import torch
 from transformer_model import *
-import json
+import pandas as pd
+
 
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
@@ -49,6 +50,7 @@ class Program:
             model = Transformer()
             for data_path in self.file_csv:
                 for couple in couple_list[count]:
+                    print(couple)
                     self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                     self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
                     print(f"run model: {couple}")
@@ -83,9 +85,11 @@ class Program:
         #Both of these need to change
         if make_file:
             make_path = f"datasets/{data_path}_embeddings.json"
-            print("load json.")
+            print("soup json.")
             embedd_file = self.load_jsons(make_path)
+            print(embedd_file)
             for rows in embedd_file[type][label]:
+                print(rows)
                 saved.append(rows['embeddings'])
             return saved
         else:
@@ -122,8 +126,28 @@ class Program:
         
             
     def load_jsons(self, file_path):
-        with open(file_path, 'r') as f:
-            return json.load(f)
+        # lj = {}
+        # with open(file_path, 'r') as f:
+        #     buffer = ''
+        #     while True:
+        #         chunk = f.read(512*512)
+        #         if not chunk:
+        #             break
+        #         buffer += chunk
+        #         # Attempt to load the JSON data from the buffer
+        #         try:
+        #             data = json.loads(buffer)
+        #             print(data)
+        #             lj.update(data)
+        #             buffer = ''  # Reset buffer after processing
+        #         except json.JSONDecodeError:
+        #             # Not a complete JSON object yet, continue reading
+        #             continue
+        # return lj
+        with open(file_path, 'rb') as file:
+            df = pd.read_json(file)
+            return df.to_dict()
+            
             
     def CheckNeed(self,make_file):
         File_keep = [file.split("_embeddings")[0] for file in self.file_json]

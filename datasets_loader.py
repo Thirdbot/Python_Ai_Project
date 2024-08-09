@@ -4,7 +4,7 @@ from transformers import GPT2TokenizerFast,BertModel,GPT2Model
 from tokenizers import Tokenizer
 import numpy as np
 import torch
-import json
+import ujson
 import os
 
 
@@ -38,7 +38,7 @@ class Datasets:
         mem_file_path = "file_info.json"
         if os.path.exists(mem_file_path):
             with open(mem_file_path, 'r') as f:
-                mem = json.load(f)
+                mem = ujson.load(f)
         else:
             mem = {"files": {}}
         # store_train = {'train':{}}
@@ -117,7 +117,7 @@ class Datasets:
 
         if os.path.exists(mem_file_path):
             with open(mem_file_path, 'r') as f:
-                mem = json.load(f)
+                mem = ujson.load(f)
         else:
             mem = {"files": {}}
             
@@ -257,17 +257,17 @@ class Datasets:
         csvList = self.Datasets_Finder("datasets")
         for path in csvList:
             with open(file_path, 'r') as f:
-                load = json.load(f)
+                load = ujson.load(f)
                 if path in load['files']:
                     continue     
                 with open(file_path, 'w') as f:
                     #print(f"Open File {file_path} .")
                     print("-----")
-                    json.dump(data, f,indent=2)
+                    ujson.dump(data, f,indent=2)
             print("Close File.")
     def save_to_json(self,file_path,data):
         with open(file_path, 'w') as f:
-            json.dump(data, f,indent=2)
+            ujson.dump(data, f,indent=2)
             print("Close File.")
 
     def decode(self,encode):
