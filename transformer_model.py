@@ -13,19 +13,10 @@ torch.set_default_device('cuda')
 class Transformer:
     def __init__(self) -> None:
 
-        self.word_size = 500
+        self.word_size = 100
         self.hiddensize = 1000
         self.ndim = 768
         self.lr = 0.1
-        # self.input = "hello, my name is Third."
-        # self.output = "hello, my name is Bot."
-
-        
-        # self.batchinput  = [c for c in self.input]
-        # self.batchoutput  = [c for c in self.output]
-
-        # self.inputsList = self.ListEmbeddings(self.batchinput)
-        # self.outputsList = self.ListEmbeddings(self.batchoutput)
         
         self.n_epochs = 2000
         
@@ -62,6 +53,9 @@ class Transformer:
             
 
     def runtrain(self,inputs,outs):
+        # inp = torch.tensor(inputs, dtype=torch.float32)
+        # out = torch.tensor(outs, dtype=torch.float32)
+        
         batchinput = [c for c in inputs]
         batchoutput = [c for c in outs]
         self.feedmodel(batchinput,batchoutput,hiddensize=self.hiddensize,ndim=self.ndim)

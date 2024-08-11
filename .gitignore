@@ -1,3 +1,6 @@
 
 datasets/chatbot_dataset_embeddings.parquet
 datasets/counsel_chat_embeddings.parquet
+
+datasets/chatbot_dataset_embeddings.feather
+datasets/counsel_chat_embeddings.feather

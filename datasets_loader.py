@@ -8,7 +8,9 @@ import json
 import os
 import pandas as pd
 import pyarrow.parquet as pq
-
+import pyarrow as pa
+import h5py
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # todo:
 #make it handle multiple datasets
 #only two file of train test
@@ -84,16 +86,15 @@ class Datasets:
                 store_datasets[data_path]['train'][columns] = train_embedding
 
             
-            mem['files'].update(mem_col)
-            self.save_mem_to_json(mem_file_path,mem)
-            self.save_to_parquet(data=store_datasets[data_path],file_path=f"{name}_embeddings.parquet")
+            
+            
             #self.save_to_lmdb(data=store_datasets[data_path],file_path=f"{name}_embeddings.lmdb")
 
             #store_datasets[data_path].update(store_train)
             #print(store_datasets[data_path]['train'][0])
             #self.save_to_json(data=store_datasets[data_path],file_path=f"{name}_embeddings.json")
 
-            for columns in features:
+            
                 #store_features = {columns:[]}
 
                 test_corpus = self.get_test_corpus(split_datasets,batch)
@@ -108,8 +109,10 @@ class Datasets:
                 
             #store_datasets[data_path].update(store_test)
             
-            
-            self.save_to_parquet(data=store_datasets[data_path],file_path=f"{name}_embeddings.parquet")
+            mem['files'].update(mem_col)
+            self.save_mem_to_json(mem_file_path,mem)
+            print("hierarchy: ",store_datasets[data_path].keys())
+            self.save_to_feature(data=store_datasets[data_path],file_path=f"{name}_embeddings.feather")
             
 
     def datasets_fetch(self,datasets,batch):
@@ -225,14 +228,14 @@ class Datasets:
                     else:
                         continue
                 rowcount += len(data[label])
-                print(data[label])
+                #print(data[label])
                 print(f"{save_name} {label}:{rowcount}")
 
 
                 q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding='longest',max_length=max_length,truncation=True,add_special_tokens = True,return_attention_mask = True, return_tensors='pt')
                 
-                q_inputs_tensor_id = q_encode['input_ids'].cuda()
-                q_inputs_tensor_mask = q_encode['attention_mask'].cuda()
+                q_inputs_tensor_id = q_encode['input_ids'].long().cuda()
+                q_inputs_tensor_mask = q_encode['attention_mask'].long().cuda()
 
                 #print(q_encode)
                 #print(f"with id: {q_inputs_tensor_id} with size: {len(q_inputs_tensor_id[0])}")
@@ -241,12 +244,12 @@ class Datasets:
 
                 
                 # q_embedding = {
-                #     'input_ids': q_inputs_tensor_id.squeeze().tolist(),
-                #     'attention_mask': q_inputs_tensor_mask.squeeze().tolist(),
-                #     'embeddings': q_outputs.last_hidden_state.squeeze().tolist()
-                # }
+                #      'input_ids': q_inputs_tensor_id.squeeze().cpu().numpy().tolist(),
+                #      'attention_mask': q_inputs_tensor_mask.squeeze().cpu().numpy().tolist()
+                #      #'embeddings': q_outputs.last_hidden_state.squeeze().tolist()
+                #  }
                 q_embedding = {
-                    #'embeddings': q_inputs_tensor_id.squeeze().tolist()
+                    # 'embeddings': q_inputs_tensor_id.squeeze().tolist()
                     'embeddings': q_outputs.last_hidden_state.squeeze().tolist()
                 }
                 print("embeddings shape: ",q_outputs.last_hidden_state.squeeze().shape)
@@ -267,14 +270,39 @@ class Datasets:
                     json.dump(data, f,indent=2)
             print("Close File.")
 
+    #i did not write this one gpt does //kinda make sense approach of json normalise
+    def flatten(self,data):
+        flattened_data = {}
+        for key, value in data.items():
+            if isinstance(value, dict):
+                flat = self.flatten(value)
+                for sub_key, sub_value in flat.items():
+                    flattened_data[f"{key}_{sub_key}"] = sub_value
+            else:
+                flattened_data[key] = value
+        return flattened_data
 
+    def save_to_json(self,file_path,data):
+        with open(file_path, 'w') as f:
+            return json.dump(data,f,indent=2)
+    
+    def save_to_feature(self,file_path,data):
+        df = pd.DataFrame(data)
+        df.to_feather(file_path)
+
+
+
+    # def save_to_hdf5(self,file_path,data):
+    #     with h5py.File(file_path, 'w') as f:
+    #         dset = f.create_dataset('file', data=data, chunks=(1000, 1000), compression='gzip')
 
     def save_to_parquet(self,file_path,data):
-        
-        df = pd.json_normalize(data, sep='_')
+        df = pd.DataFrame(data)
+        #df = pd.json_normalize(data, sep='_')
         print("Save Files.")
-        #pq.write_table(df,file_path)
-        df.to_parquet(file_path,engine='auto',compression='gzip',index=False)
+        table = pa.Table.from_pandas(df)
+        pq.write_table(table,file_path)
+        #df.to_parquet(file_path,engine='auto',compression='gzip',index=False)
 
 
     def decode(self,encode):

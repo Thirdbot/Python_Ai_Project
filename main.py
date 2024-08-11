@@ -12,6 +12,8 @@ from transformer_model import *
 import pandas as pd
 import pyarrow.parquet as pq
 import dask.dataframe as dd
+import dask.array as da
+import fastparquet as fp
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -34,7 +36,7 @@ class Program:
         self.data_fetch = {'files':{}}
 
 
-        self.file_parquet = self.find_datasets(self.datapath,".parquet")
+        self.file_parquet = self.find_datasets(self.datapath,".feather")
         self.file_csv = self.find_datasets(self.datapath,".csv")
         
         #recommend turn to False just to re embeddings it each time(faster than fetch through .json file)
@@ -53,8 +55,13 @@ class Program:
                     print(couple)
                     self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                     self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
+                    inputs_obj = np.array(self.inputs,dtype=np.object_)
+                    outputs_obj = np.array(self.outputs,dtype=np.object_)
+
+
                     print(f"run model: {couple}")
-                    model.runtrain(self.inputs,self.outputs)
+                    model.runtrain(inputs_obj,outputs_obj)
+                    
                     FILE = "data.pth"
                     data = torch.load(FILE)
                     model_state = data["model_state"]
@@ -84,17 +91,16 @@ class Program:
         saved = []
         #Both of these need to change
         if make_file:
-            make_path = f"datasets/{data_path}_embeddings.parquet"
-            print("soup json.")
-            parquet_file = pq.ParquetFile(make_path)
-            print(parquet_file.metadata)
+            make_path = f"datasets/{data_path}_embeddings.feather"
+            # print("soup json.")
+            
             # file_size = os.path.getsize(make_path)
             # print(f"File size: {file_size / (1024 * 1024)} MB")
 
-            embedd_file = self.load_parquet(make_path)
-            print(embedd_file)
-            for rows in embedd_file[type+"_"+label]:
-                print(rows)
+            embedd_file = self.load_feature(make_path)
+            
+            # print(embedd_file[type][0][label][0]) #for read_table
+            for rows in embedd_file[type][label]:
                 saved.append(rows['embeddings'])
             return saved
         else:
@@ -130,11 +136,47 @@ class Program:
             return store_couple
         
     def load_parquet(self,file_path):
-        df = pq.read_table(file_path,memory_map=True)
-        # return df.to_dict()
+        parquet_file = pq.ParquetFile(file_path)
+        df = pq.read_table(file_path,memory_map=True,use_threads=True)
+        
         # table = pq.read_table(file_path)
         # df = table.to_pandas()
-        return df.to_pandas()
+        # gen = []
+        # df = pq.ParquetFile(file_path,memory_map=True)
+        # for row in df.iter_batches(batch_size=10):
+        #     print('iter...')
+
+        #     gen.append(row.to_pandas().to_dict())
+        # return gen
+        return df.to_pydict()
+    
+    def load_feature(self,file_path):
+        df = pd.read_feather(file_path)
+        for column in df.select_dtypes(include=['number']).columns:
+            df[column] = df[column].astype(torch.float32)
+        return df
+    
+
+
+    # def print_hdf5_structure(self,group, indent=0):
+    #     # Print the group name
+    #     print('  ' * indent + group.name)
+    #     # Iterate over all items in the group
+    #     for key, item in group.items():
+    #         if isinstance(item, h5py.Group):
+    #             # If the item is a group, print its name and recurse
+    #             self.print_hdf5_structure(item, indent + 1)
+    #         elif isinstance(item, h5py.Dataset):
+    #             # If the item is a dataset, print its name
+    #             print('  ' * (indent + 1) + key)
+
+    # def load_hdf5(self,file_path):
+    #     with h5py.File(file_path, 'r') as f:
+    #         self.print_hdf5_structure(f)
+    #         dataset = da.from_array(f['file'], chunks=(1000, 1000))
+    #         return dataset
+        
+
 
     def load_jsons(self, file_path):
         with open(file_path, 'rb') as file:
