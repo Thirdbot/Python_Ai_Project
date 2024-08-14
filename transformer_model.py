@@ -6,6 +6,7 @@ from datasets_loader import *
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import torch.nn.utils.rnn as rnn_utils
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 torch.set_default_device('cuda')
@@ -16,41 +17,55 @@ class Transformer:
         self.word_size = 100
         self.hiddensize = 1000
         self.ndim = 768
-        self.lr = 0.1
-        
-        self.n_epochs = 2000
-        
+        self.lr = 0.001
+        self.num_layers = 10
+        self.n_epochs = 10
+        self.batch = 10
         
         # self.runtrain(self.inputsList,self.outputsList)
         # self.test_input()
         
         # for param_tensor in self.model.state_dict():
         #     print(param_tensor, "\t", self.model.state_dict()[param_tensor].size())
+    def load_model(self,path, word_size, ndim, hiddensize):
+        model = Model(max_length=word_size, ndim=ndim, hiddensize=hiddensize,num_layers=self.num_layers,batch=self.batch)
+        checkpoint = torch.load(path)
+        model.load_state_dict(checkpoint["model_state"])
+        return model
     
     def test_input(self):
-        model = Model(max_length=self.word_size,ndim=self.ndim,hiddensize=self.hiddensize)
-        FILE = "data.pth"
-        data = torch.load(FILE)
-        model_state = data["model_state"]
-        model.load_state_dict(model_state)
+        file = "data.pth"
+        model = self.load_model(file,self.word_size,self.ndim,self.hiddensize)
         model.eval()
         while True:
             # sentence = "do you use credit cards?"
             sentence = input("You: ")
             if sentence == "quit":
                 break
-            embbed_sent = self.ListEmbeddings(sentence)
-            break_embedd = [c for c in embbed_sent]
-            datasets = Datasets()
-            for emb in break_embedd:
-                output = model(emb[0])
-                _, predicted = torch.max(output, dim=1)
-                
-                probs = torch.softmax(output, dim=1)
-                prob = probs[0][predicted.item()]
-                print(prob)
-                print(datasets.decode(predicted))
+
+            embbed_sent = self.ListEmbeddings(sentence,self.word_size)
+            emb_tensor = torch.tensor(embbed_sent, dtype=torch.float32)
+            print(emb_tensor)
+            print(emb_tensor.shape)
+            # torch.tensor(embbed_sent)
+            # # break_embedd = [c for c in embbed_sent]s
+            # emb_tensor = embbed_sent.clone().detach()
+            # emb_tensor = emb_tensor.to(next(model.parameters()).device)
+            with torch.no_grad():
+                output = model(emb_tensor)
+                print(output)
+                 # Get predictions
+            _, predicted = torch.max(output, dim=1)
+            print("Predicted class:", predicted.item())
             
+            # Get probabilities and decode
+            probs = torch.softmax(output, dim=1)
+            prob = probs[0, predicted.item()].item()  # Get the probability of the predicted class
+            print("Probability:", prob)
+            
+            # Decode and print the prediction
+            decoded_output = self.decode(predicted)
+            print("Decoded output:", decoded_output)
 
     def runtrain(self,inputs,outs):
         # print(f"inp shape:{inputs.shape} inp shape:{outs.shape}")
@@ -65,35 +80,42 @@ class Transformer:
             # else:
             #     print(f"{bot_name}: I do not understand...")
 
-    def ListEmbeddings(self,list_input):
+    def ListEmbeddings(self,list_input,word_size):
         datasets_Detail = Datasets()
         embeds = []
         for input in list_input:
-            embed_input = datasets_Detail.set_tokenizer.encode_plus(input, padding='max_length',truncation=True,add_special_tokens = True,return_attention_mask = True,max_length=self.word_size, return_tensors='pt')
+            embed_input = datasets_Detail.set_tokenizer.encode_plus(input, padding='max_length',truncation=True,add_special_tokens = True,return_attention_mask = True,max_length=word_size, return_tensors='pt')
             embedded_model = GPT2Model.from_pretrained('gpt2')
             tensor_id = embed_input['input_ids']
             tensor_mask = embed_input['attention_mask']
             with torch.no_grad():
                 q_output = embedded_model(tensor_id,attention_mask=tensor_mask)
         
-            q_output.last_hidden_state.squeeze().tolist()
-            embeds.append(q_output[0])
-        return embeds
+            
+            embeds.append(q_output.last_hidden_state.squeeze(0))
+        padded_embeds = rnn_utils.pad_sequence(embeds, batch_first=True)
+        return padded_embeds
 
 
-
+    def batch_data(self,list_in):
+        for i in range(0, len(list_in), self.batch):
+            yield list_in[i: i + self.batch]
 
     def feedmodel(self,list_input,list_output,hiddensize,ndim):
         
-        model = Model(max_length=self.word_size,ndim=ndim,hiddensize=hiddensize)
+        model = Model(max_length=self.word_size,ndim=ndim,hiddensize=hiddensize,num_layers=self.num_layers,batch=self.batch)
         
         loss_function = nn.MSELoss()
-        optimizer = torch.optim.SGD(model.parameters(), lr=self.lr)
+        optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
         loss_values = []
 
+       
         for epochs in range(self.n_epochs):
             model.train()
             running_loss = 0.0
+            batch_input = self.batch_data(list_input)
+            batch_output = self.batch_data(list_output)
+        
             # for list_in in list_input:
             #     predicted = model(list_in)
             #     for list_out in list_output:               
@@ -101,12 +123,11 @@ class Transformer:
             #         optimizer.zero_grad()
             #         loss.backward(retain_graph=True)
             #         optimizer.step()
-            for list_in, list_out in zip(list_input, list_output):
+            for list_in, list_out in zip(batch_input, batch_output):
                 #list_in = torch.tensor(list_in, dtype=torch.float32)
                 list_in_clone = list_in.clone().detach().requires_grad_(True)
                 #list_out = torch.tensor(list_out, dtype=torch.float32)
                 list_out_clone = list_out.clone().detach().requires_grad_(True)
-
                 predicted = model(list_in_clone)
                 
                 loss = loss_function(predicted, list_out_clone)
@@ -119,12 +140,13 @@ class Transformer:
                 epoch_loss = running_loss / len(list_input)
                 loss_values.append(epoch_loss)
 
-            if epochs % 100 == 0:
-                model.eval()
-                with torch.no_grad():
-                    y_pred = model(list_in_clone.detach())
-                    train_rmse = torch.Tensor.cpu(loss_function(y_pred, list_out_clone.detach()))
-                print("Epoch %d: train RMSE %.4f" % (epochs, train_rmse))
+            #if epochs % 1 == 0:
+            model.eval()
+            with torch.no_grad():
+                y_pred = model(list_in_clone.detach())
+                train_rmse = torch.Tensor.cpu(loss_function(y_pred, list_out_clone.detach()))
+            print("Epoch %d: train RMSE %.4f" % (epochs, train_rmse))
+
         plt.figure(figsize=(10, 5))
         plt.plot(loss_values, label='Training Loss')
         plt.xlabel('Epoch')
@@ -133,7 +155,7 @@ class Transformer:
         plt.legend()
         plt.grid(True)
         plt.show()
-        
+
         data = {
             "model_state": model.state_dict(),
             "input_size": ndim,
@@ -150,21 +172,21 @@ class Transformer:
 
 
 class Model(nn.Module):
-    def __init__(self,max_length,ndim,hiddensize) -> None:
+    def __init__(self,max_length,ndim,hiddensize,num_layers,batch) -> None:
         super(Model,self).__init__()
         self.max_length = max_length
         self.ndim = ndim
         self.hidden_size = hiddensize
         self.output_size = ndim
-        self.batch = 1000
-        #self.batch = 10
+        self.batch = batch
+        self.num_layers = num_layers
         # 2 layer lstm translate layer
-        self.lstm1 = nn.LSTM(self.ndim,self.hidden_size,batch_first=True)
+        self.lstm1 = nn.LSTM(self.ndim,self.hidden_size,num_layers=self.num_layers, batch_first=True)
         
         #memory
-        self.h_0 = Variable(torch.zeros(1, self.hidden_size).cuda())
+        self.h_0 = Variable(torch.zeros(self.num_layers,self.batch, self.hidden_size).cuda())
         #carry
-        self.c_0 = Variable(torch.zeros(1, self.hidden_size).cuda())
+        self.c_0 = Variable(torch.zeros(self.num_layers,self.batch, self.hidden_size).cuda())
 
         #comllaspe to linear layer
         self.last_layer = nn.Linear(self.hidden_size,self.output_size)

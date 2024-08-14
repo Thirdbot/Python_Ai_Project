@@ -34,7 +34,7 @@ class Program:
         self.datapath = "datasets"
         self.batch = 1000
         self.data_fetch = {'files':{}}
-
+        self.run_train = True
 
         self.file_parquet = self.find_datasets(self.datapath,".feather")
         self.file_csv = self.find_datasets(self.datapath,".csv")
@@ -62,24 +62,12 @@ class Program:
                     print(f"OUTPUT SHAPE: {torch_outputs.shape}")
 
                     print(f"run model: {couple}")
-                    model.runtrain(torch_inputs,torch_outputs)
+                    if (self.run_train):
+                        model.runtrain(torch_inputs,torch_outputs)
+                    if os.path.exists("data.pth"):
+                        model.test_input()
                     
-                    # FILE = "data.pth"
-                    # data = torch.load(FILE)
-                    # model_state = data["model_state"]
-                    
-                    #question-answer pairs this way
-                    #train
-                    # print(self.inputs[0])
-                    # print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
-                    # datasets = Datasets()
-                    # print(datasets.decode(self.inputs))
-                    # print(self.outputs[0])
-                    # print(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
-                    # print(datasets.decode(self.outputs))
-
-                    #####IT TIME FOR MODEL
-                    
+                  
                     
                 count += 1
             ##some model going on here
