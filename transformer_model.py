@@ -17,8 +17,8 @@ class Transformer:
         self.word_size = 100
         self.hiddensize = 1000
         self.ndim = 768
-        self.lr = 0.001
-        self.num_layers = 2 #bidirectional ####datasets_size > num_layer *batch
+        self.lr = 0.0001
+        self.num_layers = 1 #bidirectional ####datasets_size > num_layer *batch
         self.n_epochs = 10
         self.batch = 30
         
@@ -38,7 +38,7 @@ class Transformer:
         file = "data.pth"
         model = self.load_model(file,self.word_size,self.ndim,self.hiddensize)
         datasets = Datasets()
-        classification_layer = torch.nn.Linear(self.ndim, self.word_size)
+        classification_layer = torch.nn.Linear(self.ndim, self.ndim)
         
         while True:
             # sentence = "do you use credit cards?"
@@ -56,12 +56,12 @@ class Transformer:
             with torch.no_grad():
                 model.eval()
                 output = model(embbed_sent)
-                pooled_output = output.mean(dim=1)
+                pooled_output = output.mean(dim=0)
                 logits = classification_layer(pooled_output)
                  # Get predictions
-            print(logits)
+            print("logits: ",logits)
             predicted = torch.argmax(logits, dim=-1) 
-            
+            print("argmax: ",predicted)
             # Get probabilities and decode
             probs = torch.softmax(logits, dim=1)
             pred_probs = probs[range(logits.size(0)), predicted]
@@ -117,8 +117,12 @@ class Transformer:
             yield list_in[i: i + self.batch]
 
     def feedmodel(self,list_input,list_output,hiddensize,ndim):
+        file = "data.pth"
         
-        model = Model(max_length=self.word_size,ndim=ndim,hiddensize=hiddensize,num_layers=self.num_layers,batch=self.batch)
+        if os.path.exists(file):
+            model = self.load_model(file,self.word_size,self.ndim,self.hiddensize)
+        else:
+            model = Model(max_length=self.word_size,ndim=ndim,hiddensize=hiddensize,num_layers=self.num_layers,batch=self.batch)
         
         loss_function = nn.MSELoss()
         optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
@@ -126,6 +130,7 @@ class Transformer:
 
        
         for epochs in range(self.n_epochs):
+            
             model.train()
             running_loss = 0.0
             batch_input = self.batch_data(list_input)
@@ -159,18 +164,10 @@ class Transformer:
             model.eval()
             with torch.no_grad():
                 y_pred = model(list_in_clone.detach())
-                train_rmse = torch.Tensor.cpu(loss_function(y_pred, list_out_clone.detach()))
+                train_rmse = train_rmse = torch.sqrt(loss_function(y_pred, list_out_clone.detach()))
             print("Epoch %d: train RMSE %.4f" % (epochs, train_rmse))
 
-        plt.figure(figsize=(10, 5))
-        plt.plot(loss_values, label='Training Loss')
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
-        plt.title('Training Loss Over Time')
-        plt.legend()
-        plt.grid(True)
-        plt.show()
-        plt.close()
+        
 
         data = {
             "model_state": model.state_dict(),
@@ -218,23 +215,32 @@ class Model(nn.Module):
     ##that is one encode layers
 
     def forward(self,x):
-        
-        # padd_seq = pad_packed_sequence(x,batch_first=True)
-        # lengths = torch.tensor([len(seq) for seq in x])
-        # packed_input = pack_padded_sequence(padd_seq, lengths, batch_first=True, enforce_sorted=False)
+        batch_size, seq_len, _ = x.size()
+        h_n = self.h_0.clone()
+        c_n = self.c_0.clone()
 
-        output1, (final_hidden_state1, final_cell_state1) = self.lstm1(x, (self.h_0, self.c_0))
+        outputs = []
+        for t in range(seq_len):
+            # Process the input through LSTM
+            out, (h_n, c_n) = self.lstm1(x[:, t, :].unsqueeze(1), (h_n, c_n))
+            outputs.append(out)
+
+        outputs = torch.cat(outputs, dim=1)
+        mlp_Out = self.last_layer(outputs)
+        return mlp_Out
+    
+        # output1, (final_hidden_state1, final_cell_state1) = self.lstm1(x, (self.h_0, self.c_0))
         #self.h_0,self.c_0 = final_hidden_state2,final_cell_state
-        mlp_Out = self.last_layer(output1)
-        output2, (final_hidden_state2, final_cell_state2) = self.lstm1(mlp_Out, (final_hidden_state1, final_cell_state1))
+        # mlp_Out = self.last_layer(output1)
+        # output2, (final_hidden_state2, final_cell_state2) = self.lstm1(mlp_Out, (final_hidden_state1, final_cell_state1))
 
         #self.input = output
 
         
-        output = self.last_layer(output2) 
-        # output = F.log_softmax(output, dim=1)
-        # print("SOFTMAX1: ",output)
-        return output
+        # output = self.last_layer(output1) 
+        # # output = F.log_softmax(output, dim=1)
+        # # print("SOFTMAX1: ",output)
+        # return output
     
 
 if __name__ == "__main__":

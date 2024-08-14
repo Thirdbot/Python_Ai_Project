@@ -34,7 +34,7 @@ class Program:
         self.datapath = "datasets"
         self.batch = 1000
         self.data_fetch = {'files':{}}
-        self.run_train = True
+        self.run_train = False
 
         self.file_parquet = self.find_datasets(self.datapath,".feather")
         self.file_csv = self.find_datasets(self.datapath,".csv")
@@ -63,7 +63,16 @@ class Program:
 
                     print(f"run model: {couple}")
                     if (self.run_train):
-                        model.runtrain(torch_inputs,torch_outputs)
+                        loss = model.runtrain(torch_inputs,torch_outputs)
+                plt.figure(figsize=(10, 5))
+                plt.plot(loss, label='Training Loss')
+                plt.xlabel('Epoch')
+                plt.ylabel('Loss')
+                plt.title('Training Loss Over Time')
+                plt.legend()
+                plt.grid(True)
+                plt.show()
+                plt.close()
             if os.path.exists("data.pth"):
                 model.test_input()
                     
