@@ -18,9 +18,9 @@ class Transformer:
         self.hiddensize = 1000
         self.ndim = 768
         self.lr = 0.001
-        self.num_layers = 10
+        self.num_layers = 2 #bidirectional ####datasets_size > num_layer *batch
         self.n_epochs = 10
-        self.batch = 10
+        self.batch = 30
         
         # self.runtrain(self.inputsList,self.outputsList)
         # self.test_input()
@@ -29,6 +29,7 @@ class Transformer:
         #     print(param_tensor, "\t", self.model.state_dict()[param_tensor].size())
     def load_model(self,path, word_size, ndim, hiddensize):
         model = Model(max_length=word_size, ndim=ndim, hiddensize=hiddensize,num_layers=self.num_layers,batch=self.batch)
+        
         checkpoint = torch.load(path)
         model.load_state_dict(checkpoint["model_state"])
         return model
@@ -36,7 +37,9 @@ class Transformer:
     def test_input(self):
         file = "data.pth"
         model = self.load_model(file,self.word_size,self.ndim,self.hiddensize)
-        model.eval()
+        datasets = Datasets()
+        classification_layer = torch.nn.Linear(self.ndim, self.word_size)
+        
         while True:
             # sentence = "do you use credit cards?"
             sentence = input("You: ")
@@ -44,27 +47,29 @@ class Transformer:
                 break
 
             embbed_sent = self.ListEmbeddings(sentence,self.word_size)
-            emb_tensor = torch.tensor(embbed_sent, dtype=torch.float32)
-            print(emb_tensor)
-            print(emb_tensor.shape)
+            #emb_tensor = torch.tensor(embbed_sent, dtype=torch.float32)
             # torch.tensor(embbed_sent)
             # # break_embedd = [c for c in embbed_sent]s
             # emb_tensor = embbed_sent.clone().detach()
             # emb_tensor = emb_tensor.to(next(model.parameters()).device)
+            
             with torch.no_grad():
-                output = model(emb_tensor)
-                print(output)
+                model.eval()
+                output = model(embbed_sent)
+                pooled_output = output.mean(dim=1)
+                logits = classification_layer(pooled_output)
                  # Get predictions
-            _, predicted = torch.max(output, dim=1)
-            print("Predicted class:", predicted.item())
+            print(logits)
+            predicted = torch.argmax(logits, dim=-1) 
             
             # Get probabilities and decode
-            probs = torch.softmax(output, dim=1)
-            prob = probs[0, predicted.item()].item()  # Get the probability of the predicted class
-            print("Probability:", prob)
+            probs = torch.softmax(logits, dim=1)
+            pred_probs = probs[range(logits.size(0)), predicted]
+            for i, prob in enumerate(pred_probs):
+                print(f"Probability of predicted class for sample {i}: {prob.item()}")
             
             # Decode and print the prediction
-            decoded_output = self.decode(predicted)
+            decoded_output = datasets.decode(predicted)
             print("Decoded output:", decoded_output)
 
     def runtrain(self,inputs,outs):
@@ -83,6 +88,9 @@ class Transformer:
     def ListEmbeddings(self,list_input,word_size):
         datasets_Detail = Datasets()
         embeds = []
+        sequence_lengths = []
+        #sequence_lengths.append(self.batch)
+
         for input in list_input:
             embed_input = datasets_Detail.set_tokenizer.encode_plus(input, padding='max_length',truncation=True,add_special_tokens = True,return_attention_mask = True,max_length=word_size, return_tensors='pt')
             embedded_model = GPT2Model.from_pretrained('gpt2')
@@ -93,7 +101,14 @@ class Transformer:
         
             
             embeds.append(q_output.last_hidden_state.squeeze(0))
-        padded_embeds = rnn_utils.pad_sequence(embeds, batch_first=True)
+
+        sequence_lengths.append(q_output.last_hidden_state.size(1))
+        padded_embeds = rnn_utils.pad_sequence(embeds, batch_first=True, padding_value=0)
+        if len(padded_embeds) < self.batch:
+            num_padding = self.batch - len(padded_embeds)
+            padding_tensors = torch.zeros((num_padding, padded_embeds.size(1), padded_embeds.size(2)))
+            padded_embeds = torch.cat([padded_embeds, padding_tensors], dim=0)
+            sequence_lengths.extend([0] * num_padding)
         return padded_embeds
 
 
@@ -155,6 +170,7 @@ class Transformer:
         plt.legend()
         plt.grid(True)
         plt.show()
+        plt.close()
 
         data = {
             "model_state": model.state_dict(),
@@ -181,15 +197,15 @@ class Model(nn.Module):
         self.batch = batch
         self.num_layers = num_layers
         # 2 layer lstm translate layer
-        self.lstm1 = nn.LSTM(self.ndim,self.hidden_size,num_layers=self.num_layers, batch_first=True)
+        self.lstm1 = nn.LSTM(self.ndim,self.hidden_size,num_layers=self.num_layers, batch_first=True,bidirectional=True)
         
         #memory
-        self.h_0 = Variable(torch.zeros(self.num_layers,self.batch, self.hidden_size).cuda())
+        self.h_0 = Variable(torch.zeros(2*self.num_layers,self.batch, self.hidden_size).cuda())
         #carry
-        self.c_0 = Variable(torch.zeros(self.num_layers,self.batch, self.hidden_size).cuda())
+        self.c_0 = Variable(torch.zeros(2*self.num_layers,self.batch, self.hidden_size).cuda())
 
         #comllaspe to linear layer
-        self.last_layer = nn.Linear(self.hidden_size,self.output_size)
+        self.last_layer = nn.Linear(2*self.hidden_size,self.output_size)
 
         
 

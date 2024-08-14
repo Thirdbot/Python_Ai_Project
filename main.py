@@ -64,8 +64,8 @@ class Program:
                     print(f"run model: {couple}")
                     if (self.run_train):
                         model.runtrain(torch_inputs,torch_outputs)
-                    if os.path.exists("data.pth"):
-                        model.test_input()
+            if os.path.exists("data.pth"):
+                model.test_input()
                     
                   
                     
