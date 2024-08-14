@@ -5,6 +5,7 @@ from torch.autograd import Variable
 from datasets_loader import *
 import os
 import numpy as np
+import matplotlib.pyplot as plt
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 torch.set_default_device('cuda')
@@ -12,7 +13,6 @@ torch.set_default_device('cuda')
 
 class Transformer:
     def __init__(self) -> None:
-
         self.word_size = 100
         self.hiddensize = 1000
         self.ndim = 768
@@ -53,12 +53,8 @@ class Transformer:
             
 
     def runtrain(self,inputs,outs):
-        # inp = torch.tensor(inputs, dtype=torch.float32)
-        # out = torch.tensor(outs, dtype=torch.float32)
-        
-        # batchinput = [c for c in inputs]
-        # batchoutput = [c for c in outs]
-        print(f"inp shape:{inputs.shape} inp shape:{outs.shape}")
+        # print(f"inp shape:{inputs.shape} inp shape:{outs.shape}")
+
         self.feedmodel(inputs,outs,hiddensize=self.hiddensize,ndim=self.ndim)
         
         
@@ -84,27 +80,60 @@ class Transformer:
             embeds.append(q_output[0])
         return embeds
 
+
+
+
     def feedmodel(self,list_input,list_output,hiddensize,ndim):
+        
         model = Model(max_length=self.word_size,ndim=ndim,hiddensize=hiddensize)
-        model.eval()
+        
         loss_function = nn.MSELoss()
         optimizer = torch.optim.SGD(model.parameters(), lr=self.lr)
+        loss_values = []
+
         for epochs in range(self.n_epochs):
             model.train()
-            for list_in in list_input:
-                predicted = model(list_in)
-                for list_out in list_output:               
-                    loss = loss_function(predicted,list_out)
-                    model.zero_grad()
-                    loss.backward()
-                    optimizer.step()
-            if epochs % 100 != 0:
-                continue
-            model.eval()
-            with torch.no_grad():
-                y_pred = model(list_in)
-                train_rmse = torch.Tensor.cpu(loss_function(y_pred, list_out))
-            print("Epoch %d: train RMSE %.4f" % (epochs, train_rmse))
+            running_loss = 0.0
+            # for list_in in list_input:
+            #     predicted = model(list_in)
+            #     for list_out in list_output:               
+            #         loss = loss_function(predicted,list_out)
+            #         optimizer.zero_grad()
+            #         loss.backward(retain_graph=True)
+            #         optimizer.step()
+            for list_in, list_out in zip(list_input, list_output):
+                #list_in = torch.tensor(list_in, dtype=torch.float32)
+                list_in_clone = list_in.clone().detach().requires_grad_(True)
+                #list_out = torch.tensor(list_out, dtype=torch.float32)
+                list_out_clone = list_out.clone().detach().requires_grad_(True)
+
+                predicted = model(list_in_clone)
+                
+                loss = loss_function(predicted, list_out_clone)
+                optimizer.zero_grad()  # Clear gradients before backpropagation
+                
+                loss.backward()  # Compute gradients
+                optimizer.step()  # Update model weights
+                running_loss += loss.item()
+
+                epoch_loss = running_loss / len(list_input)
+                loss_values.append(epoch_loss)
+
+            if epochs % 100 == 0:
+                model.eval()
+                with torch.no_grad():
+                    y_pred = model(list_in_clone.detach())
+                    train_rmse = torch.Tensor.cpu(loss_function(y_pred, list_out_clone.detach()))
+                print("Epoch %d: train RMSE %.4f" % (epochs, train_rmse))
+        plt.figure(figsize=(10, 5))
+        plt.plot(loss_values, label='Training Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.title('Training Loss Over Time')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+        
         data = {
             "model_state": model.state_dict(),
             "input_size": ndim,
@@ -117,7 +146,7 @@ class Transformer:
         torch.save(data, FILE)
 
         print(f'training complete. file saved to {FILE}')
-        return model
+        return loss_values 
 
 
 class Model(nn.Module):
@@ -127,6 +156,7 @@ class Model(nn.Module):
         self.ndim = ndim
         self.hidden_size = hiddensize
         self.output_size = ndim
+        self.batch = 1000
         #self.batch = 10
         # 2 layer lstm translate layer
         self.lstm1 = nn.LSTM(self.ndim,self.hidden_size,batch_first=True)
@@ -151,6 +181,10 @@ class Model(nn.Module):
 
     def forward(self,x):
         
+        # padd_seq = pad_packed_sequence(x,batch_first=True)
+        # lengths = torch.tensor([len(seq) for seq in x])
+        # packed_input = pack_padded_sequence(padd_seq, lengths, batch_first=True, enforce_sorted=False)
+
         output1, (final_hidden_state1, final_cell_state1) = self.lstm1(x, (self.h_0, self.c_0))
         #self.h_0,self.c_0 = final_hidden_state2,final_cell_state
         mlp_Out = self.last_layer(output1)

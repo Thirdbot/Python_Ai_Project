@@ -22,7 +22,7 @@ class Datasets:
         self.test_size = test_size
         #self.datasets_name = "shivangi19s/kids_chatbot_dataset_4"
         self.splits = 'train'
-        self.batch = batch
+        # self.batch = batch
         self.token_path = "tokenizer.json"
         self.max_length = 100
         self.path = path
@@ -79,40 +79,35 @@ class Datasets:
                 print("operate at label: ",columns)
                 #embedded each columns each times appends
                 train_embedding = self.embedding(token_path=self.token_path,name=name,datasets=train_corpus,columns=columns,max_length=self.max_length,is_train=True)
-                #should it be this
-                #store_datasets[data_path]['train'][columns] = train_embedding[0]
-                #store_features[columns].append(train_embedding[0]['embeddings'])
-                #store_datasets[data_path]['train'].update(store_features)
+                
+               
                 store_datasets[data_path]['train'][columns] = train_embedding
 
-            
-            
-            
-            #self.save_to_lmdb(data=store_datasets[data_path],file_path=f"{name}_embeddings.lmdb")
-
-            #store_datasets[data_path].update(store_train)
-            #print(store_datasets[data_path]['train'][0])
-            #self.save_to_json(data=store_datasets[data_path],file_path=f"{name}_embeddings.json")
-
-            
-                #store_features = {columns:[]}
-
+        
                 test_corpus = self.get_test_corpus(split_datasets,batch)
                 print("operate at label: ",columns)
                 #embedded each columns each times appends
                 test_embedding = self.embedding(token_path=self.token_path,name=name,datasets=test_corpus,columns=columns,max_length=self.max_length,is_train=False)
-                #store_datasets[data_path]['test'][columns] = test_embedding[0]
-                #store_features[columns].append(test_embedding[0]['embeddings'])
-                #store_datasets[data_path]['test'].update(store_features)
+                
+                
                 store_datasets[data_path]['test'][columns] = test_embedding
 
                 
-            #store_datasets[data_path].update(store_test)
-            
+                # print(f"{columns} --> train --> size {len(store_datasets[data_path]['train'][columns]['embeddings'])}"+
+                #       f" {len(store_datasets[data_path]['train'][columns]['embeddings'][0])}" + 
+                #       f" {len(store_datasets[data_path]['train'][columns]['embeddings'][0][0])}"+
+                #       f" {len(store_datasets[data_path]['train'][columns]['embeddings'][0][0][0])}")
+                # print(f"{columns} --> test --> size {len(store_datasets[data_path]['test'][columns]['embeddings'])}"+
+                #       f" {len(store_datasets[data_path]['test'][columns]['embeddings'][0])}" + 
+                #       f" {len(store_datasets[data_path]['test'][columns]['embeddings'][0][0])}"+
+                #       f" {len(store_datasets[data_path]['test'][columns]['embeddings'][0][0][0])}")
+                
+           
             mem['files'].update(mem_col)
             self.save_mem_to_json(mem_file_path,mem)
+            #print('test size:',torch.tensor(store_datasets[data_path]['test']['Jarvis']['embeddings']).shape)
             print("hierarchy: ",store_datasets[data_path].keys())
-
+            #self.save_to_json(file_path=f"{name}_embeddings.json",data=store_datasets[data_path])
             self.save_to_feature(data=store_datasets[data_path],file_path=f"{name}_embeddings.feather")
             
 
@@ -200,7 +195,7 @@ class Datasets:
         
         label = f'{columns}'
 
-        embed_space = []
+        embed_space = {'embeddings':[]}
         save_name = None
         #model = BertModel.from_pretrained('bert-base-uncased')
        
@@ -239,7 +234,7 @@ class Datasets:
                 
 
 
-                q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding='longest',max_length=max_length,truncation=True,add_special_tokens = True,return_attention_mask = True, return_tensors='pt')
+                q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding='max_length',max_length=max_length,truncation=True,add_special_tokens = True,return_attention_mask = True, return_tensors='pt')
                 
                 q_inputs_tensor_id = q_encode['input_ids'].cuda()
                 q_inputs_tensor_mask = q_encode['attention_mask'].cuda()
@@ -249,19 +244,20 @@ class Datasets:
                 with torch.no_grad():
                         q_outputs = self.model(q_inputs_tensor_id, attention_mask=q_inputs_tensor_mask)
 
-                
+                last_layer = q_outputs.last_hidden_state.squeeze().cpu().numpy().tolist()
                 # q_embedding = {
                 #      'input_ids': q_inputs_tensor_id.squeeze().cpu().numpy().tolist(),
                 #      'attention_mask': q_inputs_tensor_mask.squeeze().cpu().numpy().tolist()
                 #      #'embeddings': q_outputs.last_hidden_state.squeeze().tolist()
                 #  }
-                q_embedding = {
-                    # 'embeddings': q_inputs_tensor_id.squeeze().tolist()
-                    'embeddings': q_outputs.last_hidden_state.squeeze().cpu().numpy().tolist()
-                }
+                # q_embedding = {
+                #     # 'embeddings': q_inputs_tensor_id.squeeze().tolist()
+                #     'embeddings':q_outputs.last_hidden_state.squeeze().cpu().numpy().tolist()
+                # }
                 
-                print(f"{save_name} {label}:{rowcount} embeddings size: {torch.tensor(q_embedding['embeddings'][0]).shape}")
-                embed_space.append(q_embedding)
+                
+                embed_space['embeddings'].append(last_layer)
+                print(f"{save_name} {label}:{rowcount} ")
         return embed_space
         
     def save_mem_to_json(self,file_path,data):
@@ -277,24 +273,25 @@ class Datasets:
                     json.dump(data, f,indent=2)
             print("Close File.")
 
-    #i did not write this one gpt does //kinda make sense approach of json normalise flatten
-    def flatten(self,data):
-        flattened_data = {}
-        for key, value in data.items():
-            if isinstance(value, dict):
-                flat = self.flatten(value)
-                for sub_key, sub_value in flat.items():
-                    flattened_data[f"{key}_{sub_key}"] = sub_value
-            else:
-                flattened_data[key] = value
-        return flattened_data
+    # #i did not write this one gpt does //kinda make sense approach of json normalise flatten
+    # def flatten(self,data):
+    #     flattened_data = {}
+    #     for key, value in data.items():
+    #         if isinstance(value, dict):
+    #             flat = self.flatten(value)
+    #             for sub_key, sub_value in flat.items():
+    #                 flattened_data[f"{key}_{sub_key}"] = sub_value
+    #         else:
+    #             flattened_data[key] = value
+    #     return flattened_data
 
     def save_to_json(self,file_path,data):
         with open(file_path, 'w') as f:
-            return json.dump(data,f,indent=2)
+            return json.dump(data,f,indent=768)
+    
     
     def save_to_feature(self,file_path,data):
-        df = pd.DataFrame.from_dict(data)
+        df = pd.DataFrame(data)
         df.to_feather(file_path)
 
 

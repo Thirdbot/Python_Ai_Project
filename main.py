@@ -32,7 +32,7 @@ class Program:
             Program()
         
         self.datapath = "datasets"
-        self.batch = 10
+        self.batch = 1000
         self.data_fetch = {'files':{}}
 
 
@@ -53,16 +53,20 @@ class Program:
             for data_path in self.file_csv:
                 for couple in couple_list[count]:
                     print(couple)
+
                     self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                     self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
-                    print(self.inputs)
+                    torch_inputs = torch.tensor(self.inputs,dtype=torch.float32)
+                    torch_outputs = torch.tensor(self.outputs,dtype=torch.float32)
+                    print(f"INPUT SHAPE: {torch_inputs.shape}")
+                    print(f"OUTPUT SHAPE: {torch_outputs.shape}")
 
                     print(f"run model: {couple}")
-                    model.runtrain(torch.from_numpy(self.inputs[0]),torch.from_numpy(self.outputs[0]))
+                    model.runtrain(torch_inputs,torch_outputs)
                     
-                    FILE = "data.pth"
-                    data = torch.load(FILE)
-                    model_state = data["model_state"]
+                    # FILE = "data.pth"
+                    # data = torch.load(FILE)
+                    # model_state = data["model_state"]
                     
                     #question-answer pairs this way
                     #train
@@ -98,10 +102,13 @@ class Program:
             embedd_file = self.load_feature(make_path)
 
             # print(embedd_file[type][0][label][0]) #for read_table
-            for rows in embedd_file[type][label]:
-                numpy_array = np.array([obj for obj in rows['embeddings'][0]], dtype=np.float32)
-                saved.append(numpy_array)
-            return saved
+            #make it row by row array
+            for stuff in embedd_file[type][label]['embeddings']:
+                for row in stuff:
+                    numpy_array = np.array([obj for obj in row], dtype=np.float32)
+                    saved.append(numpy_array)
+            return np.array(saved)
+        
         else:
             make_path = f"datasets/{data_path}.csv"
             embedd_file = self.data_fetch['files'][make_path]

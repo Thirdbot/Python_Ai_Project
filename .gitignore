@@ -4,3 +4,4 @@ datasets/counsel_chat_embeddings.parquet
 
 datasets/chatbot_dataset_embeddings.feather
 datasets/counsel_chat_embeddings.feather
+datasets/Jarvis_RW_embeddings.feather
