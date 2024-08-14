@@ -55,12 +55,10 @@ class Program:
                     print(couple)
                     self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                     self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
-                    inputs_obj = np.array(self.inputs,dtype=np.object_)
-                    outputs_obj = np.array(self.outputs,dtype=np.object_)
-
+                    print(self.inputs)
 
                     print(f"run model: {couple}")
-                    model.runtrain(inputs_obj,outputs_obj)
+                    model.runtrain(torch.from_numpy(self.inputs[0]),torch.from_numpy(self.outputs[0]))
                     
                     FILE = "data.pth"
                     data = torch.load(FILE)
@@ -98,17 +96,18 @@ class Program:
             # print(f"File size: {file_size / (1024 * 1024)} MB")
 
             embedd_file = self.load_feature(make_path)
-            
+
             # print(embedd_file[type][0][label][0]) #for read_table
             for rows in embedd_file[type][label]:
-                saved.append(rows['embeddings'])
+                numpy_array = np.array([obj for obj in rows['embeddings'][0]], dtype=np.float32)
+                saved.append(numpy_array)
             return saved
         else:
             make_path = f"datasets/{data_path}.csv"
             embedd_file = self.data_fetch['files'][make_path]
             #print(embedd_file[type].keys())
             for rows in embedd_file[type][label]:
-                saved.append(rows['embeddings'])
+                saved.append(torch.from_numpy(rows['embeddings']))
             return saved
 
     def findcouple(self):
@@ -152,9 +151,7 @@ class Program:
     
     def load_feature(self,file_path):
         df = pd.read_feather(file_path)
-        for column in df.select_dtypes(include=['number']).columns:
-            df[column] = df[column].astype(torch.float32)
-        return df
+        return df.to_dict()
     
 
 

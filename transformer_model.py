@@ -56,9 +56,10 @@ class Transformer:
         # inp = torch.tensor(inputs, dtype=torch.float32)
         # out = torch.tensor(outs, dtype=torch.float32)
         
-        batchinput = [c for c in inputs]
-        batchoutput = [c for c in outs]
-        self.feedmodel(batchinput,batchoutput,hiddensize=self.hiddensize,ndim=self.ndim)
+        # batchinput = [c for c in inputs]
+        # batchoutput = [c for c in outs]
+        print(f"inp shape:{inputs.shape} inp shape:{outs.shape}")
+        self.feedmodel(inputs,outs,hiddensize=self.hiddensize,ndim=self.ndim)
         
         
             # if prob.item() > 0.75:
@@ -126,9 +127,9 @@ class Model(nn.Module):
         self.ndim = ndim
         self.hidden_size = hiddensize
         self.output_size = ndim
-
+        #self.batch = 10
         # 2 layer lstm translate layer
-        self.lstm1 = nn.LSTM(self.ndim,self.hidden_size)
+        self.lstm1 = nn.LSTM(self.ndim,self.hidden_size,batch_first=True)
         
         #memory
         self.h_0 = Variable(torch.zeros(1, self.hidden_size).cuda())

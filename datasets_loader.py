@@ -112,6 +112,7 @@ class Datasets:
             mem['files'].update(mem_col)
             self.save_mem_to_json(mem_file_path,mem)
             print("hierarchy: ",store_datasets[data_path].keys())
+
             self.save_to_feature(data=store_datasets[data_path],file_path=f"{name}_embeddings.feather")
             
 
@@ -222,20 +223,26 @@ class Datasets:
                 if None in data[label]:
                     data[label][data[label].index(None)] = "None"
                 
-                for c in data[label]:
-                    if type(c) is not type(str()):
-                        data[label][data[label].index(c)] = str(c)
-                    else:
-                        continue
+                # for c in data[label]:
+                #     if type(c) is not type(str()):
+                #         data[label][data[label].index(c)] = str(c)
+                for i, c in enumerate(data[label]):
+                    if not isinstance(c, str):
+                        data[label][i] = str(c)
+                
+                # if type(data[label]) is not type(list()):
+                #     data[label] = [data[label]]
+                #     print(data[label])
+                
                 rowcount += len(data[label])
                 #print(data[label])
-                print(f"{save_name} {label}:{rowcount}")
+                
 
 
                 q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding='longest',max_length=max_length,truncation=True,add_special_tokens = True,return_attention_mask = True, return_tensors='pt')
                 
-                q_inputs_tensor_id = q_encode['input_ids'].long().cuda()
-                q_inputs_tensor_mask = q_encode['attention_mask'].long().cuda()
+                q_inputs_tensor_id = q_encode['input_ids'].cuda()
+                q_inputs_tensor_mask = q_encode['attention_mask'].cuda()
 
                 #print(q_encode)
                 #print(f"with id: {q_inputs_tensor_id} with size: {len(q_inputs_tensor_id[0])}")
@@ -250,10 +257,10 @@ class Datasets:
                 #  }
                 q_embedding = {
                     # 'embeddings': q_inputs_tensor_id.squeeze().tolist()
-                    'embeddings': q_outputs.last_hidden_state.squeeze().tolist()
+                    'embeddings': q_outputs.last_hidden_state.squeeze().cpu().numpy().tolist()
                 }
-                print("embeddings shape: ",q_outputs.last_hidden_state.squeeze().shape)
-
+                
+                print(f"{save_name} {label}:{rowcount} embeddings size: {torch.tensor(q_embedding['embeddings'][0]).shape}")
                 embed_space.append(q_embedding)
         return embed_space
         
@@ -270,7 +277,7 @@ class Datasets:
                     json.dump(data, f,indent=2)
             print("Close File.")
 
-    #i did not write this one gpt does //kinda make sense approach of json normalise
+    #i did not write this one gpt does //kinda make sense approach of json normalise flatten
     def flatten(self,data):
         flattened_data = {}
         for key, value in data.items():
@@ -287,7 +294,7 @@ class Datasets:
             return json.dump(data,f,indent=2)
     
     def save_to_feature(self,file_path,data):
-        df = pd.DataFrame(data)
+        df = pd.DataFrame.from_dict(data)
         df.to_feather(file_path)
 
 
