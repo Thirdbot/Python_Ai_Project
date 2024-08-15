@@ -28,6 +28,8 @@ class Datasets:
         self.path = path
         #set default in-file changed
         self.set_tokenizer = GPT2TokenizerFast(tokenizer_object = Tokenizer.from_file(self.token_path))
+         
+        self.set_tokenizer.eos_token = self.set_tokenizer.eos_token
         self.set_tokenizer.pad_token = self.set_tokenizer.eos_token
         self.set_tokenizer.bos_token = self.set_tokenizer.bos_token
         self.model = GPT2Model.from_pretrained('gpt2').cuda()

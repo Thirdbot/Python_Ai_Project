@@ -7,6 +7,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import torch.nn.utils.rnn as rnn_utils
+from tqdm import tqdm
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 torch.set_default_device('cuda')
@@ -119,15 +120,13 @@ class Transformer:
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         loss_values = []
 
-
-       
-        for epochs in range(self.n_epochs):
+        for epochs in tqdm(range(self.n_epochs), desc="Training Epochs"):
             self.model.train()
             running_loss = 0.0
             batch_input = self.batch_data(list_input)
             batch_output = self.batch_data(list_output)
 
-            for list_in, list_out in zip(batch_input, batch_output):
+            for list_in, list_out in tqdm(zip(batch_input, batch_output),desc="Batches", leave=False):
                 #list_in = torch.tensor(list_in, dtype=torch.float32)
                 list_in_clone = list_in.clone().requires_grad_(True)
                 #list_out = torch.tensor(list_out, dtype=torch.float32)
@@ -259,11 +258,11 @@ class Seq2Seq(nn.Module):
             outputs[:, t, :] = output.squeeze(1)
 
             #print("out shape: ",outputs.shape)
-            #teacher_force = torch.rand(1).item() < teacher_forcing_ratio
-            top1 = output.argmax(2)
+            
+            #top1 = output.argmax(2)
             #print("top 1 shape",top1.shape)
             input = trg[:, t, :].float() 
-            # if teacher_force else top1.float()
+           #arg max later
 
         return outputs
 
