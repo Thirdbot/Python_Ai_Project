@@ -56,27 +56,33 @@ class Transformer:
             with torch.no_grad():
                 model.eval()
                 output = model(embbed_sent)
-                pooled_output = output.mean(dim=0)
+                pooled_output = output.mean(dim=1)
                 logits = classification_layer(pooled_output)
                  # Get predictions
             print("logits: ",logits)
+            print("logits size: ",logits.shape)
             predicted = torch.argmax(logits, dim=-1) 
             print("argmax: ",predicted)
+            print("argmax shape: ",predicted.shape)
             # Get probabilities and decode
             probs = torch.softmax(logits, dim=1)
+            print("probs shape: ",probs.shape)
+            #pred_probs = probs[range(logits.size(0)), predicted]
             pred_probs = probs[range(logits.size(0)), predicted]
-            for i, prob in enumerate(pred_probs):
-                print(f"Probability of predicted class for sample {i}: {prob.item()}")
+            print("preprobs shape: ",pred_probs.shape)
             
+            accurate_output = torch.matmul(torch.tensor(pred_probs,dtype=float),torch.tensor(logits,dtype=float))
+            torch.tensor(accurate_output)
+            outputs = torch.argmax(accurate_output, dim=-1) 
             # Decode and print the prediction
-            decoded_output = datasets.decode(predicted)
+            decoded_output = datasets.decode(outputs)
             print("Decoded output:", decoded_output)
 
     def runtrain(self,inputs,outs):
         # print(f"inp shape:{inputs.shape} inp shape:{outs.shape}")
         #left to do encoder(feature) decoder(structure) seperate weight.pth
-        self.feedmodel(inputs,outs,hiddensize=self.hiddensize,ndim=self.ndim)
-        
+        loss = self.feedmodel(inputs,outs,hiddensize=self.hiddensize,ndim=self.ndim)
+        return loss
         
             # if prob.item() > 0.75:
             #     for intent in intents['intents']:

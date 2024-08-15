@@ -310,7 +310,7 @@ class Datasets:
 
 
     def decode(self,encode):
-        return self.set_tokenizer.batch_decode(encode,True)
+        return self.set_tokenizer.decode(encode)
         
 if __name__ == "__main__":
     datasets = Datasets()

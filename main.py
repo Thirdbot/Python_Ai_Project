@@ -35,7 +35,7 @@ class Program:
         self.batch = 300
         self.pad_size = 100
         self.data_fetch = {'files':{}}
-        self.run_train = True
+        self.run_train = False
 
         self.file_parquet = self.find_datasets(self.datapath,".feather")
         self.file_csv = self.find_datasets(self.datapath,".csv")
@@ -66,21 +66,21 @@ class Program:
                     if (self.run_train):
                         loss = model.runtrain(self.inputs,self.outputs)
                         
-                plt.figure(figsize=(10, 5))
-                plt.plot(loss, label='Training Loss')
-                plt.xlabel('Epoch')
-                plt.ylabel('Loss')
-                plt.title('Training Loss Over Time')
-                plt.legend()
-                plt.grid(True)
-                plt.show()
-                plt.close()
-            if os.path.exists("data.pth"):
-                model.test_input()
+                        plt.figure(figsize=(10, 5))
+                        plt.plot(loss, label='Training Loss')
+                        plt.xlabel('Epoch')
+                        plt.ylabel('Loss')
+                        plt.title('Training Loss Over Time')
+                        plt.legend()
+                        plt.grid(True)
+                        plt.show()
+                        plt.close()
                     
                   
                     
                 count += 1
+            if os.path.exists("data.pth"):
+                    model.test_input()
             ##some model going on here
                         
             ###coupling datasets (may be i not using json file or smt just runtime embeddings osmt)
