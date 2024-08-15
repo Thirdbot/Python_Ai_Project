@@ -132,13 +132,13 @@ class Transformer:
         for epochs in tqdm(range(self.n_epochs), desc="Training Epochs"):
             self.model.train()
             running_loss = 0.0
-            batch_input = self.batch_data(list_input)
-            batch_output = self.batch_data(list_output)
+            # batch_input = self.batch_data(list_input)
+            # batch_output = self.batch_data(list_output)
 
-            for list_in, list_out in tqdm(zip(batch_input, batch_output),desc="Batches", leave=False):
-                #list_in = torch.tensor(list_in, dtype=torch.float32)
+            for list_in, list_out in tqdm(zip(list_input, list_output),desc="Batches", leave=False):
+                list_in = torch.tensor(list_in, dtype=torch.float32)
                 list_in_clone = list_in.clone().requires_grad_(True)
-                #list_out = torch.tensor(list_out, dtype=torch.float32)
+                list_out = torch.tensor(list_out, dtype=torch.float32)
                 list_out_clone = list_out.clone().requires_grad_(True)
 
                 predicted = self.model(list_in_clone,list_out_clone)

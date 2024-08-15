@@ -59,8 +59,10 @@ class Program:
                     self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
                     # torch_inputs = torch.tensor(self.inputs,dtype=torch.float32)
                     # torch_outputs = torch.tensor(self.outputs,dtype=torch.float32)
-                    print(f"INPUT SHAPE: {self.inputs.shape}")
-                    print(f"OUTPUT SHAPE: {self.outputs.shape}")
+                    # for i in self.inputs:
+                    #     print(i)
+                    # print(f"INPUT SHAPE: {self.inputs.shape}")
+                    # print(f"OUTPUT SHAPE: {self.outputs.shape}")
 
                     print(f"run model: {couple}")
                     if (self.run_train):
@@ -123,9 +125,10 @@ class Program:
                     padd_arr = self.pad_array(numpy_array,self.pad_size)
                     
                     saved.append(padd_arr)
-            saved = np.array(saved,dtype=np.float32)
+                yield np.array(saved,dtype=np.float32)
+            yield torch.tensor(saved,dtype=torch.float32)
             #print(torch.tensor(saved).shape)
-            return torch.tensor(saved,dtype=torch.float32)
+            #return torch.tensor(saved,dtype=torch.float32)
         
         else:
             make_path = f"datasets/{data_path}.csv"
