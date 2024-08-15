@@ -35,7 +35,7 @@ class Program:
         self.batch = 300
         self.pad_size = 100
         self.data_fetch = {'files':{}}
-        self.run_train = False
+        self.run_train = True
 
         self.file_parquet = self.find_datasets(self.datapath,".feather")
         self.file_csv = self.find_datasets(self.datapath,".csv")
@@ -123,9 +123,9 @@ class Program:
                     padd_arr = self.pad_array(numpy_array,self.pad_size)
                     
                     saved.append(padd_arr)
-            saved = np.array(saved)
-            print(torch.tensor(saved).shape)
-            return torch.tensor(saved)
+            saved = np.array(saved,dtype=np.float32)
+            #print(torch.tensor(saved).shape)
+            return torch.tensor(saved,dtype=torch.float32)
         
         else:
             make_path = f"datasets/{data_path}.csv"
