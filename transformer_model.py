@@ -20,7 +20,7 @@ class Transformer:
         self.lr = 0.0001
         self.num_layers = 1 #bidirectional ####datasets_size > num_layer *batch
         self.n_epochs = 10
-        self.batch = 10
+        self.batch = 100
         
         # self.runtrain(self.inputsList,self.outputsList)
         # self.test_input()
@@ -74,7 +74,7 @@ class Transformer:
 
     def runtrain(self,inputs,outs):
         # print(f"inp shape:{inputs.shape} inp shape:{outs.shape}")
-        
+        #left to do encoder(feature) decoder(structure) seperate weight.pth
         self.feedmodel(inputs,outs,hiddensize=self.hiddensize,ndim=self.ndim)
         
         
@@ -197,10 +197,7 @@ class Model(nn.Module):
         # 2 layer lstm translate layer
         self.lstm1 = nn.LSTM(self.ndim,self.hidden_size,num_layers=self.num_layers, batch_first=True,bidirectional=True)
         
-        #memory
-        self.h_0 = Variable(torch.zeros(2*self.num_layers,self.batch, self.hidden_size).cuda())
-        #carry
-        self.c_0 = Variable(torch.zeros(2*self.num_layers,self.batch, self.hidden_size).cuda())
+        
 
         #comllaspe to linear layer
         self.last_layer = nn.Linear(2*self.hidden_size,self.output_size)
@@ -217,8 +214,12 @@ class Model(nn.Module):
 
     def forward(self,x):
         batch_size, seq_len, _ = x.size()
-        h_n = self.h_0.clone()
-        c_n = self.c_0.clone()
+        #memory
+        h_0 = Variable(torch.zeros(2*self.num_layers,batch_size, self.hidden_size).cuda())
+        #carry
+        c_0 = Variable(torch.zeros(2*self.num_layers,batch_size, self.hidden_size).cuda())
+        h_n = h_0.clone()
+        c_n = c_0.clone()
 
         outputs = []
         for t in range(seq_len):
