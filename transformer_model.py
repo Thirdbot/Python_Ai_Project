@@ -21,7 +21,7 @@ class Transformer:
         self.lr = 0.0001
         self.num_layers = 2 #bidirectional
         self.n_epochs = 10
-        self.batch = 100
+        self.batch = 1
 
         enc = Encoder(input_dim=self.ndim,hidden_dim=self.hiddensize,num_layers=self.num_layers)
         dec = Decoder(input_dim=self.ndim,output_dim=self.ndim,hidden_dim=self.hiddensize,num_layers=self.num_layers)
@@ -120,6 +120,15 @@ class Transformer:
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         loss_values = []
 
+        #dynamic plot
+        plt.ion()
+        fig, ax = plt.subplots()
+        ax.set_xlabel('Epoch')
+        ax.set_ylabel('Loss')
+        line, = ax.plot([], [], 'r-')
+        ax.set_xlim(0, self.n_epochs)
+        ax.set_ylim(0, 1)  # Adjust based on expected loss values
+        
         for epochs in tqdm(range(self.n_epochs), desc="Training Epochs"):
             self.model.train()
             running_loss = 0.0
@@ -141,10 +150,17 @@ class Transformer:
                 optimizer.step()  # Update model weights
                 running_loss += loss.item()
 
-                epoch_loss = running_loss / len(list_input)
-                loss_values.append(epoch_loss)
+            epoch_loss = running_loss / len(list_input)
+            loss_values.append(epoch_loss)
 
-            #if epochs % 1 == 0:
+            # Update the plot
+            line.set_xdata(range(len(loss_values)))
+            line.set_ydata(loss_values)
+            ax.set_ylim(0, max(loss_values) * 1.1)  # Dynamically adjust y-axis
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+            plt.pause(0.01)
+
             self.model.eval()
             with torch.no_grad():
                 y_pred = self.model(list_in_clone.detach(),list_out_clone.detach())

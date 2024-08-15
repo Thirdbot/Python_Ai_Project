@@ -66,15 +66,15 @@ class Program:
                     if (self.run_train):
                         loss = model.runtrain(self.inputs,self.outputs)
                         
-                        plt.figure(figsize=(10, 5))
-                        plt.plot(loss, label='Training Loss')
-                        plt.xlabel('Epoch')
-                        plt.ylabel('Loss')
-                        plt.title('Training Loss Over Time')
-                        plt.legend()
-                        plt.grid(True)
-                        plt.show()
-                        plt.close()
+                        # plt.figure(figsize=(10, 5))
+                        # plt.plot(loss, label='Training Loss')
+                        # plt.xlabel('Epoch')
+                        # plt.ylabel('Loss')
+                        # plt.title('Training Loss Over Time')
+                        # plt.legend()
+                        # plt.grid(True)
+                        # plt.show()
+                        # plt.close()
                     
                   
                     
