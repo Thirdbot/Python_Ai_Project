@@ -20,7 +20,7 @@ class Transformer:
         self.lr = 0.0001
         self.num_layers = 1 #bidirectional ####datasets_size > num_layer *batch
         self.n_epochs = 10
-        self.batch = 30
+        self.batch = 10
         
         # self.runtrain(self.inputsList,self.outputsList)
         # self.test_input()
@@ -74,7 +74,7 @@ class Transformer:
 
     def runtrain(self,inputs,outs):
         # print(f"inp shape:{inputs.shape} inp shape:{outs.shape}")
-
+        
         self.feedmodel(inputs,outs,hiddensize=self.hiddensize,ndim=self.ndim)
         
         
@@ -103,6 +103,7 @@ class Transformer:
             embeds.append(q_output.last_hidden_state.squeeze(0))
 
         sequence_lengths.append(q_output.last_hidden_state.size(1))
+
         padded_embeds = rnn_utils.pad_sequence(embeds, batch_first=True, padding_value=0)
         if len(padded_embeds) < self.batch:
             num_padding = self.batch - len(padded_embeds)

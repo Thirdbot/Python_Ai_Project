@@ -16,7 +16,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #only two file of train test
 
 class Datasets:
-    def __init__(self,path='datasets',test_size=0.2,batch=1000) -> None:
+    def __init__(self,path='datasets',test_size=0.2) -> None:
         super().__init__()
         
         self.test_size = test_size
@@ -241,7 +241,7 @@ class Datasets:
 
                 #print(q_encode)
                 #print(f"with id: {q_inputs_tensor_id} with size: {len(q_inputs_tensor_id[0])}")
-                with torch.no_grad():
+                with torch.no_grad(): 
                         q_outputs = self.model(q_inputs_tensor_id, attention_mask=q_inputs_tensor_mask)
 
                 last_layer = q_outputs.last_hidden_state.squeeze().cpu().numpy().tolist()

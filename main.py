@@ -32,9 +32,10 @@ class Program:
             Program()
         
         self.datapath = "datasets"
-        self.batch = 1000
+        self.batch = 300
+        self.pad_size = 100
         self.data_fetch = {'files':{}}
-        self.run_train = False
+        self.run_train = True
 
         self.file_parquet = self.find_datasets(self.datapath,".feather")
         self.file_csv = self.find_datasets(self.datapath,".csv")
@@ -56,14 +57,15 @@ class Program:
 
                     self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                     self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
-                    torch_inputs = torch.tensor(self.inputs,dtype=torch.float32)
-                    torch_outputs = torch.tensor(self.outputs,dtype=torch.float32)
-                    print(f"INPUT SHAPE: {torch_inputs.shape}")
-                    print(f"OUTPUT SHAPE: {torch_outputs.shape}")
+                    # torch_inputs = torch.tensor(self.inputs,dtype=torch.float32)
+                    # torch_outputs = torch.tensor(self.outputs,dtype=torch.float32)
+                    print(f"INPUT SHAPE: {self.inputs.shape}")
+                    print(f"OUTPUT SHAPE: {self.outputs.shape}")
 
                     print(f"run model: {couple}")
                     if (self.run_train):
-                        loss = model.runtrain(torch_inputs,torch_outputs)
+                        loss = model.runtrain(self.inputs,self.outputs)
+                        
                 plt.figure(figsize=(10, 5))
                 plt.plot(loss, label='Training Loss')
                 plt.xlabel('Epoch')
@@ -85,6 +87,21 @@ class Program:
             pass
         
 
+    
+    def pad_array(self,arr, target_length, padding_value=0):
+        arr = torch.tensor(arr)
+        sequence_lengths = []
+        sequence_lengths.append(arr.shape[0])
+        padded_embeds = rnn_utils.pad_sequence(arr, batch_first=False, padding_value=padding_value)
+        if padded_embeds.shape[1] < target_length:
+            num_padding = target_length - padded_embeds.shape[1]
+            padding_tensors = torch.zeros((num_padding, padded_embeds.shape[0]))
+            padded_embeds = torch.cat([padded_embeds.transpose(0,1), padding_tensors], dim=0)
+            sequence_lengths.extend([0] * num_padding)
+        else:
+            padded_embeds = padded_embeds.transpose(0,1)
+        return padded_embeds.cpu().numpy()
+
     #it work
     def soupDatasets(self,data_path,label,type,make_file):
         saved = []
@@ -97,14 +114,18 @@ class Program:
             # print(f"File size: {file_size / (1024 * 1024)} MB")
 
             embedd_file = self.load_feature(make_path)
-
+            # print(embedd_file['train']['Question']['embeddings'][0])
             # print(embedd_file[type][0][label][0]) #for read_table
             #make it row by row array
             for stuff in embedd_file[type][label]['embeddings']:
                 for row in stuff:
                     numpy_array = np.array([obj for obj in row], dtype=np.float32)
-                    saved.append(numpy_array)
-            return np.array(saved)
+                    padd_arr = self.pad_array(numpy_array,self.pad_size)
+                    
+                    saved.append(padd_arr)
+            saved = np.array(saved)
+            print(torch.tensor(saved).shape)
+            return torch.tensor(saved)
         
         else:
             make_path = f"datasets/{data_path}.csv"
