@@ -84,12 +84,9 @@ class Datasets:
                 
                 store_datasets['train'][columns] = train_embedding
             
-            mem['files'].update(mem_col)
-            self.save_mem_to_json(mem_file_path,mem)
+            
 
-            self.save_to_feature(data=store_datasets,file_path=f"{name}_embeddings.feather")
-
-            for columns in features:
+            
                 test_corpus = self.get_test_corpus(split_datasets,batch)
                 print("operate at label: ",columns)
                 #embedded each columns each times appends
@@ -99,11 +96,13 @@ class Datasets:
 
                 
            
-            
+            mem['files'].update(mem_col)
+            self.save_mem_to_json(mem_file_path,mem)
             #print('test size:',torch.tensor(store_datasets[data_path]['test']['Jarvis']['embeddings']).shape)
             print("hierarchy: ",store_datasets.keys())
             #self.save_to_json(file_path=f"{name}_embeddings.json",data=store_datasets[data_path])
             self.save_to_feature(data=store_datasets,file_path=f"{name}_embeddings.feather")
+
             
 
     def datasets_fetch(self,datasets,batch):
@@ -231,7 +230,7 @@ class Datasets:
                 
 
 
-                q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding='max_length',max_length=max_length,truncation=True,add_special_tokens = True,return_attention_mask = True, return_tensors='pt')
+                q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding='longest',max_length=max_length,truncation=True,add_special_tokens = True,return_attention_mask = True, return_tensors='pt')
                 
                 q_inputs_tensor_id = q_encode['input_ids'].cuda()
                 q_inputs_tensor_mask = q_encode['attention_mask'].cuda()
