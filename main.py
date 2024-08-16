@@ -32,7 +32,7 @@ class Program:
             Program()
         
         self.datapath = "datasets"
-        self.batch = 20
+        self.batch = 64 #batch size in this refer to bbatch in save files
         self.pad_size = 100
 
         self.data_fetch = {'files':{}}
@@ -73,8 +73,8 @@ class Program:
                   
                     
                 count += 1
-            if os.path.exists("data.pth"):
-                    model.test_input()
+            # if os.path.exists("data.pth"):
+            #         model.test_input()
             ##some model going on here
                         
             ###coupling datasets (may be i not using json file or smt just runtime embeddings osmt)
@@ -83,10 +83,9 @@ class Program:
 
     
     def pad_array(self,arr, target_length, padding_value=0):
-        arr = torch.tensor(arr)
         sequence_lengths = []
         sequence_lengths.append(arr.shape[0])
-        padded_embeds = rnn_utils.pad_sequence(arr, batch_first=False, padding_value=padding_value)
+        padded_embeds = rnn_utils.pad_sequence(arr, batch_first=False, padding_value=padding_value).to("cuda")
         if padded_embeds.shape[1] < target_length:
             num_padding = target_length - padded_embeds.shape[1]
             padding_tensors = torch.zeros((num_padding, padded_embeds.shape[0]))
@@ -94,7 +93,7 @@ class Program:
             sequence_lengths.extend([0] * num_padding)
         else:
             padded_embeds = padded_embeds.transpose(0,1)
-        return padded_embeds.cpu().numpy()
+        return padded_embeds
 
     #it work
     def soupDatasets(self,data_path,label,type,make_file):
@@ -108,12 +107,14 @@ class Program:
             #make it row by row array
             for stuff in embedd_file[type][label]['embeddings']:
                 for row in stuff:
-                    numpy_array = np.array([obj for obj in row], dtype=np.float32)
+                    numpy_array =torch.stack([torch.tensor(np.array(obj),dtype=torch.float32) for obj in row])
                     padd_arr = self.pad_array(numpy_array,self.pad_size)
-                    
                     saved.append(padd_arr)
-                yield np.array(saved,dtype=np.float32)
-            yield torch.tensor(saved,dtype=torch.float32)
+                result = torch.stack(saved)
+                yield result
+            yield result
+            
+            
             
         
         else:

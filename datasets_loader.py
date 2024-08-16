@@ -178,21 +178,21 @@ class Datasets:
     
     def get_train_corpus(self,datasets,batch):
         print("train_datasets size:",len(datasets['train'])-1)
-        for i in range(0, len(datasets['train'])-1, batch):
+        for i in range(0, len(datasets['train']), batch):
             # print(f"BATCH:{i}")
-            batch_data = datasets['train'][i:min(i + batch, len(datasets['train'])-1)]
+            batch_data = datasets['train'][i:min(i + batch, len(datasets['train']))]
             #handling left one
-            if len(batch_data) > 0:
-                yield batch_data
+            #if len(batch_data) > 0:
+            yield batch_data
 
     def get_test_corpus(self,datasets,batch):
         print("test_datasets size:",len(datasets['test'])-1)
-        for i in range(0, len(datasets['test'])-1, batch):
+        for i in range(0, len(datasets['test']), batch):
             # print(f"BATCH:{i}")
-            batch_data = datasets['test'][i:min(i + batch, len(datasets['test'])-1)]
+            batch_data = datasets['test'][i:min(i + batch, len(datasets['test']))]
             #handling left one
-            if len(batch_data) > 0:
-                yield batch_data
+            #if len(batch_data) > 0:
+            yield batch_data
 
     def embedding(self,token_path,name,datasets,columns,max_length,is_train):
         
