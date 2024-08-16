@@ -32,7 +32,7 @@ class Program:
             Program()
         
         self.datapath = "datasets"
-        self.batch = 10
+        self.batch = 20
         self.pad_size = 100
 
         self.data_fetch = {'files':{}}
@@ -70,16 +70,6 @@ class Program:
                     if (self.run_train):
                         loss = model.runtrain(self.inputs,self.outputs)
                         
-                        # plt.figure(figsize=(10, 5))
-                        # plt.plot(loss, label='Training Loss')
-                        # plt.xlabel('Epoch')
-                        # plt.ylabel('Loss')
-                        # plt.title('Training Loss Over Time')
-                        # plt.legend()
-                        # plt.grid(True)
-                        # plt.show()
-                        # plt.close()
-                    
                   
                     
                 count += 1
@@ -112,14 +102,9 @@ class Program:
         #Both of these need to change
         if make_file:
             make_path = f"datasets/{data_path}_embeddings.feather"
-            # print("soup json.")
-            
-            # file_size = os.path.getsize(make_path)
-            # print(f"File size: {file_size / (1024 * 1024)} MB")
-
+           
             embedd_file = self.load_feature(make_path)
-            # print(embedd_file['train']['Question']['embeddings'][0])
-            # print(embedd_file[type][0][label][0]) #for read_table
+            
             #make it row by row array
             for stuff in embedd_file[type][label]['embeddings']:
                 for row in stuff:
@@ -129,8 +114,7 @@ class Program:
                     saved.append(padd_arr)
                 yield np.array(saved,dtype=np.float32)
             yield torch.tensor(saved,dtype=torch.float32)
-            #print(torch.tensor(saved).shape)
-            #return torch.tensor(saved,dtype=torch.float32)
+            
         
         else:
             make_path = f"datasets/{data_path}.csv"

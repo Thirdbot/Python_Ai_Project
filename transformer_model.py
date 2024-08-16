@@ -129,34 +129,36 @@ class Transformer:
         line, = ax.plot([], [], 'r-')
         ax.set_xlim(0, self.n_epochs)
         ax.set_ylim(0, 1)  # Adjust based on expected loss values
+
         
         for epochs in tqdm(range(self.n_epochs), desc="Training Epochs"):
             self.model.train()
             running_loss = 0.0
-            # batch_input = self.batch_data(list_input)
-            # batch_output = self.batch_data(list_output)
-            
             for list_in, list_out in tqdm(zip(list_input, list_output),desc="Batches"):
-                list_in = torch.tensor(list_in, dtype=torch.float32)
-                list_in_clone = list_in.clone().requires_grad_(True)
+                
+                list_in_clone = torch.tensor(list_in, dtype=torch.float32).to("cuda")
+                #list_in_clone = list_in.clone().requires_grad_(True)
                 # print(list_in_clone.shape)
-                list_out = torch.tensor(list_out, dtype=torch.float32)
-                list_out_clone = list_out.clone().requires_grad_(True)
+                list_out_clone = torch.tensor(list_out, dtype=torch.float32).to("cuda")
+                #list_out_clone = list_out.clone().requires_grad_(True)
 
                 predicted = self.model(list_in_clone,list_out_clone)
                 
                 loss = loss_function(predicted, list_out_clone)
-                optimizer.zero_grad()  # Clear gradients before backpropagation
+                
                 
                 loss.backward()  # Compute gradients
-                optimizer.step()  # Update model weights
+                
+                optimizer.step()
+                optimizer.zero_grad()
+
                 running_loss += loss.item()
 
             epoch_loss = running_loss / len(list_input)
             loss_values.append(epoch_loss)
 
             # Update the plot
-            line.set_xdata(range(len(loss_values)))
+            line.set_xdata(range(0,len(loss_values)))
             line.set_ydata(loss_values)
             ax.set_ylim(0, max(loss_values) * 1.1)  # Dynamically adjust y-axis
             fig.canvas.draw()

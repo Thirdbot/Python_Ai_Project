@@ -63,6 +63,7 @@ class Datasets:
             split_datasets = ds.train_test_split(test_size=self.test_size)
             print("Splited datasets info: ",split_datasets)
             
+
             #extract feature
             features = split_datasets['train'].features
             print("founded feature: ",features)
@@ -76,7 +77,7 @@ class Datasets:
                 #store_features = {columns:[]}
 
                 mem_col[data_path].append(columns)
-
+                
                 train_corpus = self.get_train_corpus(split_datasets,batch)
                 print("operate at label: ",columns)
                 #embedded each columns each times appends
@@ -176,16 +177,22 @@ class Datasets:
         return datasets_dir_list
     
     def get_train_corpus(self,datasets,batch):
-        print("train_datasets size:",len(datasets['train']))
-        for i in range(0, len(datasets['train']), batch):
-            batch_data = datasets['train'][i:min(i + batch, len(datasets['train']))]
-            yield batch_data
+        print("train_datasets size:",len(datasets['train'])-1)
+        for i in range(0, len(datasets['train'])-1, batch):
+            # print(f"BATCH:{i}")
+            batch_data = datasets['train'][i:min(i + batch, len(datasets['train'])-1)]
+            #handling left one
+            if len(batch_data) > 0:
+                yield batch_data
 
     def get_test_corpus(self,datasets,batch):
-        print("test_datasets size:",len(datasets['test']))
-        for i in range(0, len(datasets['test']), batch):
-            batch_data = datasets['test'][i:min(i + batch, len(datasets['test']))]
-            yield batch_data
+        print("test_datasets size:",len(datasets['test'])-1)
+        for i in range(0, len(datasets['test'])-1, batch):
+            # print(f"BATCH:{i}")
+            batch_data = datasets['test'][i:min(i + batch, len(datasets['test'])-1)]
+            #handling left one
+            if len(batch_data) > 0:
+                yield batch_data
 
     def embedding(self,token_path,name,datasets,columns,max_length,is_train):
         
@@ -209,51 +216,37 @@ class Datasets:
         rowcount = 0
 
         for data in data_get:
-            #for row in data[label]:
-                #clean data
-                if None in data[label]:
-                    data[label][data[label].index(None)] = "None"
-                
-                # for c in data[label]:
-                #     if type(c) is not type(str()):
-                #         data[label][data[label].index(c)] = str(c)
-                for i, c in enumerate(data[label]):
-                    if not isinstance(c, str):
-                        data[label][i] = str(c)
-                
-                # if type(data[label]) is not type(list()):
-                #     data[label] = [data[label]]
-                #     print(data[label])
-                
-                rowcount += len(data[label])
-                #print(data[label])
-                
+            if None in data[label]:
+                data[label] = [str(None) if v is None else v for v in data[label]]
+            data[label] = [str(v) if not isinstance(v, str) else v for v in data[label]]
+            
+        
+            rowcount += len(data[label])
 
+            q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding='longest',max_length=max_length,
+                                                            truncation=True,add_special_tokens = True,
+                                                            return_attention_mask = True, return_tensors='pt')
+            
+            q_inputs_tensor_id = q_encode['input_ids'].cuda()
+            q_inputs_tensor_mask = q_encode['attention_mask'].cuda()
 
-                q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding='longest',max_length=max_length,truncation=True,add_special_tokens = True,return_attention_mask = True, return_tensors='pt')
-                
-                q_inputs_tensor_id = q_encode['input_ids'].cuda()
-                q_inputs_tensor_mask = q_encode['attention_mask'].cuda()
+            with torch.no_grad(): 
+                    q_outputs = self.model(q_inputs_tensor_id, attention_mask=q_inputs_tensor_mask)
 
-                #print(q_encode)
-                #print(f"with id: {q_inputs_tensor_id} with size: {len(q_inputs_tensor_id[0])}")
-                with torch.no_grad(): 
-                        q_outputs = self.model(q_inputs_tensor_id, attention_mask=q_inputs_tensor_mask)
-
-                last_layer = q_outputs.last_hidden_state.squeeze().cpu().numpy().tolist()
-                # q_embedding = {
-                #      'input_ids': q_inputs_tensor_id.squeeze().cpu().numpy().tolist(),
-                #      'attention_mask': q_inputs_tensor_mask.squeeze().cpu().numpy().tolist()
-                #      #'embeddings': q_outputs.last_hidden_state.squeeze().tolist()
-                #  }
-                # q_embedding = {
-                #     # 'embeddings': q_inputs_tensor_id.squeeze().tolist()
-                #     'embeddings':q_outputs.last_hidden_state.squeeze().cpu().numpy().tolist()
-                # }
-                
-                
-                embed_space['embeddings'].append(last_layer)
-                print(f"{save_name} {label}:{rowcount} ")
+            last_layer = q_outputs.last_hidden_state.squeeze().cpu().numpy().tolist()
+            # q_embedding = {
+            #      'input_ids': q_inputs_tensor_id.squeeze().cpu().numpy().tolist(),
+            #      'attention_mask': q_inputs_tensor_mask.squeeze().cpu().numpy().tolist()
+            #      #'embeddings': q_outputs.last_hidden_state.squeeze().tolist()
+            #  }
+            # q_embedding = {
+            #     # 'embeddings': q_inputs_tensor_id.squeeze().tolist()
+            #     'embeddings':q_outputs.last_hidden_state.squeeze().cpu().numpy().tolist()
+            # }
+            
+            
+            embed_space['embeddings'].append(last_layer)
+            print(f"{save_name} {label}:{rowcount} ")
         return embed_space
         
     def save_mem_to_json(self,file_path,data):
