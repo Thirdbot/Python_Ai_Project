@@ -111,7 +111,6 @@ class Program:
                     saved.append(padd_arr)
                 result = torch.stack(saved).to("cuda")
                 yield result.to("cuda")
-            yield result("cuda")
             
             
             
