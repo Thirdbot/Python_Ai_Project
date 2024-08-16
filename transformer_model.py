@@ -21,7 +21,8 @@ class Transformer:
         self.lr = 0.0001
         self.num_layers = 2 #bidirectional
         self.n_epochs = 10
-        self.batch = 1
+        self.batch = 100
+        self.paddings = 100
 
         enc = Encoder(input_dim=self.ndim,hidden_dim=self.hiddensize,num_layers=self.num_layers)
         dec = Decoder(input_dim=self.ndim,output_dim=self.ndim,hidden_dim=self.hiddensize,num_layers=self.num_layers)
@@ -95,8 +96,8 @@ class Transformer:
         sequence_lengths.append(q_output.last_hidden_state.size(1))
 
         padded_embeds = rnn_utils.pad_sequence(embeds, batch_first=True, padding_value=0)
-        if len(padded_embeds) < self.batch:
-            num_padding = self.batch - len(padded_embeds)
+        if len(padded_embeds) < self.paddings:
+            num_padding = self.paddings - len(padded_embeds)
             padding_tensors = torch.zeros((num_padding, padded_embeds.size(1), padded_embeds.size(2)))
             padded_embeds = torch.cat([padded_embeds, padding_tensors], dim=0)
             sequence_lengths.extend([0] * num_padding)
@@ -179,7 +180,8 @@ class Transformer:
 
         FILE = "data.pth"
         torch.save(data, FILE)
-
+        plt.ioff()  # Turn off interactive mode
+        plt.show()
         print(f'training complete. file saved to {FILE}')
         return loss_values 
 

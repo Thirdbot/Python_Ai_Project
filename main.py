@@ -34,6 +34,7 @@ class Program:
         self.datapath = "datasets"
         self.batch = 300
         self.pad_size = 100
+        
         self.data_fetch = {'files':{}}
         self.run_train = True
 
