@@ -21,7 +21,7 @@ class Transformer:
         self.lr = 0.0001
         self.num_layers = 2 #bidirectional
         self.n_epochs = 10
-        self.batch = 100
+        self.batch = 10
         self.paddings = 100
 
         enc = Encoder(input_dim=self.ndim,hidden_dim=self.hiddensize,num_layers=self.num_layers)
@@ -139,7 +139,7 @@ class Transformer:
             for list_in, list_out in tqdm(zip(list_input, list_output),desc="Batches"):
                 list_in = torch.tensor(list_in, dtype=torch.float32)
                 list_in_clone = list_in.clone().requires_grad_(True)
-                print(list_in_clone.shape)
+                # print(list_in_clone.shape)
                 list_out = torch.tensor(list_out, dtype=torch.float32)
                 list_out_clone = list_out.clone().requires_grad_(True)
 

@@ -32,7 +32,7 @@ class Program:
             Program()
         
         self.datapath = "datasets"
-        self.batch = 100
+        self.batch = 10
         self.pad_size = 100
 
         self.data_fetch = {'files':{}}
