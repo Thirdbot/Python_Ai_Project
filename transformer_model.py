@@ -192,18 +192,18 @@ class Transformer:
                 epoch_loss = running_loss / inputs_size
                 loss_values.append(epoch_loss)
 
-                line.set_xdata(range(0,len(loss_values)))
-                line.set_ydata(loss_values)
-                ax.set_ylim(max(loss_values) * 1.1)  # Dynamically adjust y-axis
-                fig.canvas.draw()
-                fig.canvas.flush_events()
-                plt.pause(0.01)
+            line.set_xdata(range(0,len(loss_values)))
+            line.set_ydata(loss_values)
+            ax.set_ylim(max(loss_values) * 1.1)  # Dynamically adjust y-axis
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+            plt.pause(0.01)
 
                 
 
             self.model.eval()
             with torch.no_grad():
-                y_pred = self.model(list_in.to("cuda", non_blocking=True))
+                y_pred = self.model(list_in.to("cuda", non_blocking=True),list_out.to("cuda", non_blocking=True))
                 train_rmse = torch.sqrt(loss_function(y_pred, list_out.to("cuda", non_blocking=True)))
             print("Epoch %d: train RMSE %.4f" % (epochs, train_rmse))
 
