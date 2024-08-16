@@ -233,7 +233,7 @@ class Datasets:
             with torch.no_grad(): 
                     q_outputs = self.model(q_inputs_tensor_id, attention_mask=q_inputs_tensor_mask)
 
-            last_layer = q_outputs.last_hidden_state.squeeze().cpu().numpy().tolist()
+            last_layer = q_outputs.last_hidden_state.squeeze()
             # q_embedding = {
             #      'input_ids': q_inputs_tensor_id.squeeze().cpu().numpy().tolist(),
             #      'attention_mask': q_inputs_tensor_mask.squeeze().cpu().numpy().tolist()

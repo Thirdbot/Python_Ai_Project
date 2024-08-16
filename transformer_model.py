@@ -19,7 +19,7 @@ class Transformer:
         self.word_size = 100
         self.hiddensize = 1000
         self.ndim = 768
-        self.lr = 0.0001
+        self.lr = 0.000001
         self.num_layers = 2 #bidirectional
         self.n_epochs = 10
         self.batch = 10 #batch in this refer to batch for training
@@ -107,7 +107,7 @@ class Transformer:
 
     def batch_data(self,list_in,batch):
         for i in list_in:
-            for idx in range(0,i.size(0),batch):
+            for idx in range(0,len(i),batch):
                 batched = i[idx:min(idx+batch,len(i))]
                 yield batched
 
@@ -148,59 +148,64 @@ class Transformer:
             #print(List_inputs)
             #multithread
 
-            # input_loader = DataLoader(List_inputs, batch_size=32, shuffle=True, num_workers=4)
-            # output_loader = DataLoader(List_outputs, batch_size=32, shuffle=True, num_workers=4)
-
+            
             
 
             for list_in, list_out in tqdm(zip(list_input,list_output),desc="Batches",leave=False):
                 
-                print("Big:",list_in.shape)
                 #load generator for fast computation
-                inputs_batch = self.batch_data(list_in,batch=self.batch)
-                outputs_batch = self.batch_data(list_out,batch=self.batch)
-                inputs_size = len(list(inputs_batch))
-
-                for list_inin,list_outout in (zip(inputs_batch,outputs_batch)):
-
+                # inputs_batch = self.batch_data(list_in,batch=self.batch)
+                # outputs_batch = self.batch_data(list_out,batch=self.batch)
+                inputs_size = len(list(list_in))
+                
+                #multithread not really :(
+                input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=0)
+                output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=0)
+               
+                optimizer.zero_grad()
+                for list_inin,list_outout in zip(input_loader,output_loader):
                     #iterate sub generator for computertion
                 
                     # list_in_clone = torch.tensor(list_in, dtype=torch.float32).to("cuda")
                     # list_in_clone = list_in.clone().requires_grad_(True)
-                    print(list_inin.shape)
                     # list_out_clone = torch.tensor(list_out, dtype=torch.float32).to("cuda")
                     # list_out_clone = list_out.clone().requires_grad_(True)
 
-                    optimizer.zero_grad()
+                    list_inin = list_inin.to("cuda", non_blocking=True)
+                    list_outout = list_outout.to("cuda", non_blocking=True)
                     
                     predicted = self.model(list_inin,list_outout)
                     
                     loss = loss_function(predicted, list_outout)
                     
-                    
                     loss.backward()  # Compute gradients
                     
                     optimizer.step()
                     
-                    print("run")
                     running_loss += loss.item()
 
-            epoch_loss = running_loss / inputs_size
-            loss_values.append(epoch_loss)
+                    
+                del input_loader
+                del output_loader
+                torch.cuda.empty_cache()
+                
+                epoch_loss = running_loss / inputs_size
+                loss_values.append(epoch_loss)
 
-        
-            line.set_xdata(range(0,len(loss_values)))
-            line.set_ydata(loss_values)
-            ax.set_ylim(max(loss_values) * 1.1)  # Dynamically adjust y-axis
-            fig.canvas.draw()
-            fig.canvas.flush_events()
-            plt.pause(0.01)
+                line.set_xdata(range(0,len(loss_values)))
+                line.set_ydata(loss_values)
+                ax.set_ylim(max(loss_values) * 1.1)  # Dynamically adjust y-axis
+                fig.canvas.draw()
+                fig.canvas.flush_events()
+                plt.pause(0.01)
+
+                
 
             self.model.eval()
             with torch.no_grad():
-                y_pred = self.model(list_in.detach(),list_out.detach())
-                train_rmse = torch.sqrt(loss_function(y_pred, list_out.detach()))
-            #print("Epoch %d: train RMSE %.4f" % (epochs, train_rmse))
+                y_pred = self.model(list_in.to("cuda", non_blocking=True))
+                train_rmse = torch.sqrt(loss_function(y_pred, list_out.to("cuda", non_blocking=True)))
+            print("Epoch %d: train RMSE %.4f" % (epochs, train_rmse))
 
         
 

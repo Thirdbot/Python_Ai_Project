@@ -18,7 +18,6 @@ import fastparquet as fp
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_default_device('cuda')
-print(device)
 
 class Program:
     def __init__(self) -> None:
@@ -88,12 +87,12 @@ class Program:
         padded_embeds = rnn_utils.pad_sequence(arr, batch_first=False, padding_value=padding_value).to("cuda")
         if padded_embeds.shape[1] < target_length:
             num_padding = target_length - padded_embeds.shape[1]
-            padding_tensors = torch.zeros((num_padding, padded_embeds.shape[0]))
-            padded_embeds = torch.cat([padded_embeds.transpose(0,1), padding_tensors], dim=0)
+            padding_tensors = torch.zeros((num_padding, padded_embeds.shape[0])).to("cuda")
+            padded_embeds = torch.cat([padded_embeds.transpose(0,1), padding_tensors], dim=0).to("cuda")
             sequence_lengths.extend([0] * num_padding)
         else:
-            padded_embeds = padded_embeds.transpose(0,1)
-        return padded_embeds
+            padded_embeds = padded_embeds.transpose(0,1).to("cuda")
+        return padded_embeds.to("cuda")
 
     #it work
     def soupDatasets(self,data_path,label,type,make_file):
@@ -107,12 +106,12 @@ class Program:
             #make it row by row array
             for stuff in embedd_file[type][label]['embeddings']:
                 for row in stuff:
-                    numpy_array =torch.stack([torch.tensor(np.array(obj),dtype=torch.float32) for obj in row])
+                    numpy_array =torch.stack([torch.tensor(np.array(obj),dtype=torch.float32).to("cuda") for obj in row])
                     padd_arr = self.pad_array(numpy_array,self.pad_size)
                     saved.append(padd_arr)
-                result = torch.stack(saved)
-                yield result
-            yield result
+                result = torch.stack(saved).to("cuda")
+                yield result.to("cuda")
+            yield result("cuda")
             
             
             
