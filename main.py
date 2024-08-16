@@ -32,9 +32,9 @@ class Program:
             Program()
         
         self.datapath = "datasets"
-        self.batch = 300
+        self.batch = 100
         self.pad_size = 100
-        
+
         self.data_fetch = {'files':{}}
         self.run_train = True
 
@@ -58,6 +58,7 @@ class Program:
 
                     self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                     self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
+                    
                     # torch_inputs = torch.tensor(self.inputs,dtype=torch.float32)
                     # torch_outputs = torch.tensor(self.outputs,dtype=torch.float32)
                     # for i in self.inputs:

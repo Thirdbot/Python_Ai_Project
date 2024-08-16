@@ -54,7 +54,7 @@ class Datasets:
             mem_col = {data_path:[]}
 
             #directory construct
-            store_datasets = {data_path: {'train': {}, 'test': {}}}
+            store_datasets = {'train': {}, 'test': {}}
             
 
             #load datasets with split train
@@ -82,35 +82,28 @@ class Datasets:
                 #embedded each columns each times appends
                 train_embedding = self.embedding(token_path=self.token_path,name=name,datasets=train_corpus,columns=columns,max_length=self.max_length,is_train=True)
                 
-               
-                store_datasets[data_path]['train'][columns] = train_embedding
+                store_datasets['train'][columns] = train_embedding
+            
+            mem['files'].update(mem_col)
+            self.save_mem_to_json(mem_file_path,mem)
 
-        
+            self.save_to_feature(data=store_datasets,file_path=f"{name}_embeddings.feather")
+
+            for columns in features:
                 test_corpus = self.get_test_corpus(split_datasets,batch)
                 print("operate at label: ",columns)
                 #embedded each columns each times appends
                 test_embedding = self.embedding(token_path=self.token_path,name=name,datasets=test_corpus,columns=columns,max_length=self.max_length,is_train=False)
                 
-                
-                store_datasets[data_path]['test'][columns] = test_embedding
+                store_datasets['test'][columns] = test_embedding
 
                 
-                # print(f"{columns} --> train --> size {len(store_datasets[data_path]['train'][columns]['embeddings'])}"+
-                #       f" {len(store_datasets[data_path]['train'][columns]['embeddings'][0])}" + 
-                #       f" {len(store_datasets[data_path]['train'][columns]['embeddings'][0][0])}"+
-                #       f" {len(store_datasets[data_path]['train'][columns]['embeddings'][0][0][0])}")
-                # print(f"{columns} --> test --> size {len(store_datasets[data_path]['test'][columns]['embeddings'])}"+
-                #       f" {len(store_datasets[data_path]['test'][columns]['embeddings'][0])}" + 
-                #       f" {len(store_datasets[data_path]['test'][columns]['embeddings'][0][0])}"+
-                #       f" {len(store_datasets[data_path]['test'][columns]['embeddings'][0][0][0])}")
-                
            
-            mem['files'].update(mem_col)
-            self.save_mem_to_json(mem_file_path,mem)
+            
             #print('test size:',torch.tensor(store_datasets[data_path]['test']['Jarvis']['embeddings']).shape)
-            print("hierarchy: ",store_datasets[data_path].keys())
+            print("hierarchy: ",store_datasets.keys())
             #self.save_to_json(file_path=f"{name}_embeddings.json",data=store_datasets[data_path])
-            self.save_to_feature(data=store_datasets[data_path],file_path=f"{name}_embeddings.feather")
+            self.save_to_feature(data=store_datasets,file_path=f"{name}_embeddings.feather")
             
 
     def datasets_fetch(self,datasets,batch):
@@ -186,12 +179,14 @@ class Datasets:
     def get_train_corpus(self,datasets,batch):
         print("train_datasets size:",len(datasets['train']))
         for i in range(0, len(datasets['train']), batch):
-            yield datasets['train'][i: i + batch]
+            batch_data = datasets['train'][i:min(i + batch, len(datasets['train']))]
+            yield batch_data
 
     def get_test_corpus(self,datasets,batch):
         print("test_datasets size:",len(datasets['test']))
         for i in range(0, len(datasets['test']), batch):
-            yield datasets['test'][i: i + batch]
+            batch_data = datasets['test'][i:min(i + batch, len(datasets['test']))]
+            yield batch_data
 
     def embedding(self,token_path,name,datasets,columns,max_length,is_train):
         

@@ -135,10 +135,11 @@ class Transformer:
             running_loss = 0.0
             # batch_input = self.batch_data(list_input)
             # batch_output = self.batch_data(list_output)
-
-            for list_in, list_out in tqdm(zip(list_input, list_output),desc="Batches", leave=False):
+            
+            for list_in, list_out in tqdm(zip(list_input, list_output),desc="Batches"):
                 list_in = torch.tensor(list_in, dtype=torch.float32)
                 list_in_clone = list_in.clone().requires_grad_(True)
+                print(list_in_clone.shape)
                 list_out = torch.tensor(list_out, dtype=torch.float32)
                 list_out_clone = list_out.clone().requires_grad_(True)
 
