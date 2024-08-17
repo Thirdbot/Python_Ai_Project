@@ -22,7 +22,7 @@ class Transformer:
         self.lr = 0.000001
         self.num_layers = 2 #bidirectional
         self.n_epochs = 10
-        self.batch = 10 #batch in this refer to batch for training
+        self.batch = 32 #batch in this refer to batch for training
         self.paddings = 100
 
         enc = Encoder(input_dim=self.ndim,hidden_dim=self.hiddensize,num_layers=self.num_layers)
@@ -143,21 +143,13 @@ class Transformer:
         for epochs in tqdm(range(self.n_epochs), desc="Training Epochs"):
             self.model.train()
             running_loss = 0.0
-            # List_inputs = [i for i in list_input]
-            # List_outputs = [i for i in list_output]
-            #print(List_inputs)
-            #multithread
-
-            
-            
-
             for list_in, list_out in tqdm(zip(list_input,list_output),desc="Batches",leave=False):
                 
                 #load generator for fast computation
                 # inputs_batch = self.batch_data(list_in,batch=self.batch)
                 # outputs_batch = self.batch_data(list_out,batch=self.batch)
                 inputs_size = len(list(list_in))
-                
+                # print("OUTTER: ",list_in.shape)
                 #multithread not really :(
                 input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=0)
                 output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=0)
@@ -165,7 +157,7 @@ class Transformer:
                 optimizer.zero_grad()
                 for list_inin,list_outout in zip(input_loader,output_loader):
                     #iterate sub generator for computertion
-                
+
                     # list_in_clone = torch.tensor(list_in, dtype=torch.float32).to("cuda")
                     # list_in_clone = list_in.clone().requires_grad_(True)
                     # list_out_clone = torch.tensor(list_out, dtype=torch.float32).to("cuda")
@@ -174,6 +166,7 @@ class Transformer:
                     list_inin = list_inin.to("cuda", non_blocking=True)
                     list_outout = list_outout.to("cuda", non_blocking=True)
                     
+                    # print("INNER: ",list_inin.shape)
                     predicted = self.model(list_inin,list_outout)
                     
                     loss = loss_function(predicted, list_outout)
@@ -194,7 +187,7 @@ class Transformer:
 
             line.set_xdata(range(0,len(loss_values)))
             line.set_ydata(loss_values)
-            ax.set_ylim(max(loss_values) * 1.1)  # Dynamically adjust y-axis
+            ax.set_ylim(max(loss_values) * 1.1)  
             fig.canvas.draw()
             fig.canvas.flush_events()
             plt.pause(0.01)
@@ -205,9 +198,10 @@ class Transformer:
             with torch.no_grad():
                 y_pred = self.model(list_in.to("cuda", non_blocking=True),list_out.to("cuda", non_blocking=True))
                 train_rmse = torch.sqrt(loss_function(y_pred, list_out.to("cuda", non_blocking=True)))
-            print("Epoch %d: train RMSE %.4f" % (epochs, train_rmse))
 
         
+        plt.ioff()  # Turn off interactive mode
+        plt.close()
 
         data = {
             "model_state": self.model.state_dict(),
@@ -216,11 +210,9 @@ class Transformer:
             "output_size": ndim,
             "all_words": self.word_size,
             }
-
         FILE = "data.pth"
         torch.save(data, FILE)
-        plt.ioff()  # Turn off interactive mode
-        plt.show()
+        
         print(f'training complete. file saved to {FILE}')
         return loss_values 
 
