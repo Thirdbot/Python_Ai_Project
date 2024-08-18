@@ -85,7 +85,7 @@ class Datasets:
                 
                 store_datasets['train'][columns] = train_embedding
             
-            
+                
 
             
                 test_corpus = self.get_test_corpus(split_datasets,batch)
@@ -95,14 +95,14 @@ class Datasets:
                 
                 store_datasets['test'][columns] = test_embedding
 
-                
+            self.save_to_feature(data=store_datasets,file_path=f"{name}_embeddings.feather")
            
             mem['files'].update(mem_col)
             self.save_mem_to_json(mem_file_path,mem)
             #print('test size:',torch.tensor(store_datasets[data_path]['test']['Jarvis']['embeddings']).shape)
             print("hierarchy: ",store_datasets.keys())
             #self.save_to_json(file_path=f"{name}_embeddings.json",data=store_datasets[data_path])
-            self.save_to_feature(data=store_datasets,file_path=f"{name}_embeddings.feather")
+            
 
             
 
@@ -212,10 +212,10 @@ class Datasets:
             save_name = "test"
 
 
-        # data = list(datasets)
+        rowcount = 0
         for data in datasets:
             
-            rowcount = 0
+            
             data[label] = [str(v) if not isinstance(v, str) else v for v in data[label]]
             
         
@@ -244,7 +244,7 @@ class Datasets:
             
             
             embed_space['embeddings'].append(last_layer)
-            print(f"{save_name} {label} batch:{rowcount} ")
+            print(f"{save_name} {label} concatenated rows: {rowcount} ")
         return embed_space
         
     def save_mem_to_json(self,file_path,data):
@@ -278,7 +278,7 @@ class Datasets:
     
     
     def save_to_feature(self,file_path,data):
-        df = pd.DataFrame(data).astype(torch.float32)
+        df = pd.DataFrame(data)
         df.to_feather(file_path)
 
 

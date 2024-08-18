@@ -22,7 +22,7 @@ class Transformer:
         self.lr = 0.000001
         self.num_layers = 2 #bidirectional
         self.n_epochs = 10
-        self.batch = 32 #batch in this refer to batch for training
+        self.batch = 5 #batch in this refer to batch for training
         self.paddings = 100
 
         enc = Encoder(input_dim=self.ndim,hidden_dim=self.hiddensize,num_layers=self.num_layers)
