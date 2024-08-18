@@ -177,7 +177,7 @@ class Datasets:
         return datasets_dir_list
     
     def get_train_corpus(self,datasets,batch):
-        print("train_datasets size:",len(datasets['train'])-1)
+        print("train_datasets size:",len(datasets['train']))
         for i in range(0, len(datasets['train']), batch):
             # print(f"BATCH:{i}")
             batch_data = datasets['train'][i:min(i + batch, len(datasets['train']))]
@@ -186,7 +186,7 @@ class Datasets:
             yield batch_data
 
     def get_test_corpus(self,datasets,batch):
-        print("test_datasets size:",len(datasets['test'])-1)
+        print("test_datasets size:",len(datasets['test']))
         for i in range(0, len(datasets['test']), batch):
             # print(f"BATCH:{i}")
             batch_data = datasets['test'][i:min(i + batch, len(datasets['test']))]
@@ -212,12 +212,10 @@ class Datasets:
             save_name = "test"
 
 
-        data_get = list(datasets)
-        rowcount = 0
-
-        for data in data_get:
-            if None in data[label]:
-                data[label] = [str(None) if v is None else v for v in data[label]]
+        # data = list(datasets)
+        for data in datasets:
+            
+            rowcount = 0
             data[label] = [str(v) if not isinstance(v, str) else v for v in data[label]]
             
         
@@ -233,7 +231,7 @@ class Datasets:
             with torch.no_grad(): 
                     q_outputs = self.model(q_inputs_tensor_id, attention_mask=q_inputs_tensor_mask)
 
-            last_layer = q_outputs.last_hidden_state.squeeze()
+            last_layer = q_outputs.last_hidden_state.squeeze().tolist()
             # q_embedding = {
             #      'input_ids': q_inputs_tensor_id.squeeze().cpu().numpy().tolist(),
             #      'attention_mask': q_inputs_tensor_mask.squeeze().cpu().numpy().tolist()
@@ -246,7 +244,7 @@ class Datasets:
             
             
             embed_space['embeddings'].append(last_layer)
-            print(f"{save_name} {label}:{rowcount} ")
+            print(f"{save_name} {label} batch:{rowcount} ")
         return embed_space
         
     def save_mem_to_json(self,file_path,data):
@@ -280,7 +278,7 @@ class Datasets:
     
     
     def save_to_feature(self,file_path,data):
-        df = pd.DataFrame(data)
+        df = pd.DataFrame(data).astype(torch.float32)
         df.to_feather(file_path)
 
 
