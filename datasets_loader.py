@@ -216,12 +216,12 @@ class Datasets:
         for data in datasets:
             
             
-            data[label] = [str(v) if not isinstance(v, str) else v for v in data[label]]
+            data[label] = [str(v) for v in data[label]]
             
         
             rowcount += len(data[label])
 
-            q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding='longest',max_length=max_length,
+            q_encode = self.set_tokenizer.batch_encode_plus(list(data[label]),padding='longest',max_length=max_length,
                                                             truncation=True,add_special_tokens = True,
                                                             return_attention_mask = True, return_tensors='pt')
             
