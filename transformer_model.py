@@ -22,7 +22,7 @@ class Transformer:
         self.lr = 0.000001
         self.num_layers = 2 #bidirectional
         self.n_epochs = 10
-        self.batch = 5 #batch in this refer to batch for training
+        self.batch = 32 #batch in this refer to batch for training
         self.paddings = 100
 
         enc = Encoder(input_dim=self.ndim,hidden_dim=self.hiddensize,num_layers=self.num_layers)
@@ -141,6 +141,7 @@ class Transformer:
         
 
         for epochs in tqdm(range(self.n_epochs), desc="Training Epochs"):
+            epoch_loss = 0
             self.model.train()
             running_loss = 0.0
             zipdata = zip(list_input,list_output)
@@ -183,22 +184,21 @@ class Transformer:
                 # del output_loader
                 # torch.cuda.empty_cache()
                 
-                epoch_loss = running_loss / inputs_size
-                loss_values.append(epoch_loss)
+                epoch_loss += running_loss / inputs_size
+            loss_values.append(epoch_loss)
 
             line.set_xdata(range(0,len(loss_values)))
             line.set_ydata(loss_values)
-            ax.set_ylim(len(loss_values))  
+            ax.set_ylim(max(loss_values)*1.1)  
             fig.canvas.draw()
             fig.canvas.flush_events()
-            plt.pause(0.01)
+            #plt.pause(0.01)
 
             self.model.eval()
-            for train,test in zipdata:
+            for inpt,outp in zipdata:
                 with torch.no_grad():
-                    y_pred = self.model(train.to("cuda", non_blocking=True),test.to("cuda", non_blocking=True))
-                    train_rmse = torch.sqrt(loss_function(y_pred, list_out.to("cuda", non_blocking=True)))
-
+                    y_pred = self.model(inpt.to("cuda", non_blocking=True),outp.to("cuda", non_blocking=True))
+                    #train_rmse = torch.sqrt(loss_function(y_pred, outp.to("cuda", non_blocking=True)))
         
         plt.ioff()  # Turn off interactive mode
         plt.close()
