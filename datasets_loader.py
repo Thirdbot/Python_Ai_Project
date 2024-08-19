@@ -71,25 +71,20 @@ class Datasets:
             
             #name for easier naming
             name = os.path.splitext(data_path)[0]
-
+            train_corpus = self.get_train_corpus(split_datasets,batch)
+            test_corpus = self.get_test_corpus(split_datasets,batch)
             #each feature in each train/test
             for columns in features:
                 #store_features = {columns:[]}
 
                 mem_col[data_path].append(columns)
                 
-                train_corpus = self.get_train_corpus(split_datasets,batch)
                 print("operate at label: ",columns)
                 #embedded each columns each times appends
                 train_embedding = self.embedding(token_path=self.token_path,name=name,datasets=train_corpus,columns=columns,max_length=self.max_length,is_train=True)
                 
                 store_datasets['train'][columns] = train_embedding
-            
-                
 
-            
-                test_corpus = self.get_test_corpus(split_datasets,batch)
-                print("operate at label: ",columns)
                 #embedded each columns each times appends
                 test_embedding = self.embedding(token_path=self.token_path,name=name,datasets=test_corpus,columns=columns,max_length=self.max_length,is_train=False)
                 
@@ -159,7 +154,6 @@ class Datasets:
                 self.save_mem_to_json(mem_file_path,mem)
 
                 
-                print("operate at label: ",columns)
                 #embedded each columns each times appends
                 test_embedding = self.embedding(token_path=self.token_path,name=name,datasets=test_corpus,columns=columns,max_length=self.max_length,is_train=False)
                 

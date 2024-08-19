@@ -143,7 +143,8 @@ class Transformer:
         for epochs in tqdm(range(self.n_epochs), desc="Training Epochs"):
             self.model.train()
             running_loss = 0.0
-            for list_in, list_out in tqdm(zip(list_input,list_output),desc="Batches",leave=False):
+            zipdata = zip(list_input,list_output)
+            for list_in, list_out in tqdm(zipdata,desc="Batches",leave=False):
                 
                 #load generator for fast computation
                 # inputs_batch = self.batch_data(list_in,batch=self.batch)
@@ -178,26 +179,25 @@ class Transformer:
                     running_loss += loss.item()
 
                     
-                del input_loader
-                del output_loader
-                torch.cuda.empty_cache()
+                # del input_loader
+                # del output_loader
+                # torch.cuda.empty_cache()
                 
                 epoch_loss = running_loss / inputs_size
                 loss_values.append(epoch_loss)
 
             line.set_xdata(range(0,len(loss_values)))
             line.set_ydata(loss_values)
-            ax.set_ylim(max(loss_values) * 1.1)  
+            ax.set_ylim(len(loss_values))  
             fig.canvas.draw()
             fig.canvas.flush_events()
             plt.pause(0.01)
 
-                
-
             self.model.eval()
-            with torch.no_grad():
-                y_pred = self.model(list_in.to("cuda", non_blocking=True),list_out.to("cuda", non_blocking=True))
-                train_rmse = torch.sqrt(loss_function(y_pred, list_out.to("cuda", non_blocking=True)))
+            for train,test in zipdata:
+                with torch.no_grad():
+                    y_pred = self.model(train.to("cuda", non_blocking=True),test.to("cuda", non_blocking=True))
+                    train_rmse = torch.sqrt(loss_function(y_pred, list_out.to("cuda", non_blocking=True)))
 
         
         plt.ioff()  # Turn off interactive mode
