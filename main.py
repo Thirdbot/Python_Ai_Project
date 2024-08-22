@@ -42,6 +42,7 @@ class Program:
         
         #recommend turn to False just to re embeddings it each time(faster than fetch through .json file)
         self.make_file = True
+
         self.inputs = None
         self.outputs = None
 
@@ -68,12 +69,13 @@ class Program:
                     print(f"run model: {couple}")
                     if (self.run_train):
                         loss = model.runtrain(self.inputs,self.outputs)
+
                         
                   
                     
                 count += 1
-            # if os.path.exists("data.pth"):
-            #         model.test_input()
+            if os.path.exists("model_checkpoint.pth"):
+                    model.test_input()
             ##some model going on here
                         
             ###coupling datasets (may be i not using json file or smt just runtime embeddings osmt)
@@ -106,7 +108,7 @@ class Program:
             #make it row by row array
             for stuff in embedd_file[type][label]['embeddings']:
                 for row in stuff:
-                    numpy_array =torch.stack([torch.tensor(np.array(obj),dtype=torch.float32).to("cuda") for obj in row])
+                    numpy_array =torch.stack([torch.tensor(np.array(obj),dtype=torch.long).to("cuda") for obj in row])
                     padd_arr = self.pad_array(numpy_array,self.pad_size)
                     saved.append(padd_arr)
                 result = torch.stack(saved).to("cuda")

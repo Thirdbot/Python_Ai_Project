@@ -32,6 +32,7 @@ class Datasets:
         self.set_tokenizer.eos_token = self.set_tokenizer.eos_token
         self.set_tokenizer.pad_token = self.set_tokenizer.eos_token
         self.set_tokenizer.bos_token = self.set_tokenizer.bos_token
+        
         self.model = GPT2Model.from_pretrained('gpt2').cuda()
         self.model.eval()
         #self.find_datasets = self.Datasets_Finder(self.path)
