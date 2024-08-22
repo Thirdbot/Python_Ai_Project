@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
 from mpl_toolkits.axes_grid1 import ImageGrid
+from language_model import Transformer
+
 PAD_IDX = 0
 SOS_IDX = 1
 EOS_IDX = 2
@@ -108,6 +110,7 @@ def collate_fn(batch):
     return src_batch, tgt_batch
 
 # Model hyperparameters
+
 class TrainInterference:
     def __init__(self) -> None:
         self.args = {
@@ -125,8 +128,8 @@ class TrainInterference:
         # Instantiate datasets
         self.train_iter = ReverseDataset(50000, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
         self.eval_iter = ReverseDataset(10000, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
-        self.dataloader_train = DataLoader(self.train_iter,batch_size=16, collate_fn=collate_fn)
-        self.dataloader_val = DataLoader(self.eval_iter,batch_size=16, collate_fn=collate_fn)
+        self.dataloader_train = DataLoader(self.train_iter,batch_size=4, collate_fn=collate_fn)
+        self.dataloader_val = DataLoader(self.eval_iter,batch_size=4, collate_fn=collate_fn)
 
         # During debugging, we ensure sources and targets are indeed reversed
         # s, t = next(iter(dataloader_train))
@@ -152,7 +155,7 @@ class TrainInterference:
         }
 
     def runtrain(self,dt,dv):
-        for epoch in range(1,10):
+        for epoch in tqdm(range(1,10),desc='Epoch',leave=False):
             start_time = time.time()
             train_loss, train_acc, hist_loss, hist_acc = train(self.model, self.optimizer, dt, self.loss_fn, epoch)
             self.history['train_loss'] += hist_loss
@@ -162,17 +165,22 @@ class TrainInterference:
             self.history['eval_loss'] += hist_loss
             self.history['eval_acc'] += hist_acc
             print((f"Epoch: {epoch}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s"))
-        fig = plt.figure(figsize=(10., 10.))
-        images = self.model.decoder.decoder_blocks[0].cross_attention.attention_weigths[0,...].detach().numpy()
-        grid = ImageGrid(fig, 111,  # similar to subplot(111)
-                        nrows_ncols=(2, 2),  # creates 2x2 grid of axes
-                        axes_pad=0.1,  # pad between axes in inch.
-                        )
+        # fig = plt.figure(figsize=(10., 10.))
+        # images = self.model.decoder.decoder_blocks[0].cross_attention.attention_weigths[0,...].detach().numpy()
+        # grid = ImageGrid(fig, 111,  # similar to subplot(111)
+        #                 nrows_ncols=(2, 2),  # creates 2x2 grid of axes
+        #                 axes_pad=0.1,  # pad between axes in inch.
+        #                 )
 
-        for ax, im in zip(grid, images):
-            # Iterating over the grid returns the Axes.
-            ax.imshow(im)
+        # for ax, im in zip(grid, images):
+        #     # Iterating over the grid returns the Axes.
+        #     ax.imshow(im)
+        
         return self.history['train_loss']
+    
+    def runpredict(self,x,max_length):
+        output = self.model.predict(x,max_length)
+        return output
             
 if __name__ == "__main__":
     training = TrainInterference()

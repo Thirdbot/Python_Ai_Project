@@ -51,20 +51,13 @@ class Program:
             
             couple_list = self.findcouple()
             count = 0
-            model = Transformer()
+            model = Transformers()
             for data_path in self.file_csv:
                 for couple in couple_list[count]:
                     print(couple)
 
                     self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                     self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
-                    
-                    # torch_inputs = torch.tensor(self.inputs,dtype=torch.float32)
-                    # torch_outputs = torch.tensor(self.outputs,dtype=torch.float32)
-                    # for i in self.inputs:
-                    #     print(i)
-                    # print(f"INPUT SHAPE: {self.inputs.shape}")
-                    # print(f"OUTPUT SHAPE: {self.outputs.shape}")
 
                     print(f"run model: {couple}")
                     if (self.run_train):
@@ -94,7 +87,7 @@ class Program:
             sequence_lengths.extend([0] * num_padding)
         else:
             padded_embeds = padded_embeds.transpose(0,1).to("cuda")
-        return padded_embeds.to("cuda")
+        return padded_embeds.transpose(0,1).to("cuda")
 
     #it work
     def soupDatasets(self,data_path,label,type,make_file):

@@ -64,7 +64,9 @@ class MultiHeadAttention(nn.Module):
                 
         # Key mask here
         if key_padding_mask is not None:
-            key_padding_mask = key_padding_mask.unsqueeze(1).unsqueeze(2) # Broadcast over batch size, num heads
+            key_padding_mask = key_padding_mask.unsqueeze(0).squeeze(2) # Broadcast over batch size, num heads
+            #key_padding_mask = key_padding_mask.repeat(1, self.num_heads, tgt_len, 1)  
+            print(f"logits:{logits.shape} paddings: {key_padding_mask.shape}")
             logits = logits + key_padding_mask
         
         
@@ -188,10 +190,10 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         self.n_dim = n_dim
 
-        self.embedding = nn.Embedding(
-            num_embeddings=vocab_size, 
-            embedding_dim=n_dim
-        )
+        # self.embedding = nn.Embedding(
+        #     num_embeddings=vocab_size, 
+        #     embedding_dim=n_dim
+        # )
         self.positional_encoding = PositionalEncoding(
             d_model=n_dim, 
             dropout=dropout
@@ -203,7 +205,7 @@ class Encoder(nn.Module):
         
     def forward(self, x, padding_mask=None):
         x = x.int()
-        x = self.embedding(x) * math.sqrt(self.n_dim)
+        # x = self.embedding(x) * math.sqrt(self.n_dim) 
         x = self.positional_encoding(x)
         for block in self.encoder_blocks:
             x = block(x=x, src_padding_mask=padding_mask)
@@ -252,11 +254,11 @@ class Decoder(nn.Module):
         
         super(Decoder, self).__init__()
         
-        self.embedding = nn.Embedding(
-            num_embeddings=vocab_size, 
-            embedding_dim=n_dim,
-            padding_idx=0
-        )
+        # self.embedding = nn.Embedding(
+        #     num_embeddings=vocab_size, 
+        #     embedding_dim=n_dim,
+        #     padding_idx=0
+        # )
         self.positional_encoding = PositionalEncoding(
             d_model=n_dim, 
             dropout=dropout
@@ -268,7 +270,7 @@ class Decoder(nn.Module):
         
         
     def forward(self, tgt, memory, tgt_mask=None, tgt_padding_mask=None, memory_padding_mask=None):
-        x = self.embedding(tgt)
+        # x = self.embedding(tgt)
         x = self.positional_encoding(x)
 
         for block in self.decoder_blocks:
@@ -293,6 +295,7 @@ class Transformer(nn.Module):
         
         for k, v in kwargs.items():
             print(f" * {k}={v}")
+        
         
         self.vocab_size = kwargs.get('vocab_size')
         self.model_dim = kwargs.get('model_dim')
@@ -400,47 +403,56 @@ class Transformer(nn.Module):
         
         return decoder_output
 
-def predict(
-            self,
-            x: torch.Tensor,
-            sos_idx: int=1,
-            eos_idx: int=2,
-            max_length: int=None
-        ) -> torch.Tensor:
-        """
-        Method to use at inference time. Predict y from x one token at a time. This method is greedy
-        decoding. Beam search can be used instead for a potential accuracy boost.
+    def predict(
+                self,
+                x: torch.Tensor,
+                sos_idx=1,
+                eos_idx=2,
+                max_length: int=None
+            ) -> torch.Tensor:
+            """
+            Method to use at inference time. Predict y from x one token at a time. This method is greedy
+            decoding. Beam search can be used instead for a potential accuracy boost.
 
-        Input
-            x: str
-        Output
-            (B, L, C) logits
-        """
-
-        # Pad the tokens with beginning and end of sentence tokens
-        x = torch.cat([
-            torch.tensor([sos_idx]), 
-            x, 
-            torch.tensor([eos_idx])]
-        ).unsqueeze(0)
-
-        encoder_output, mask = self.transformer.encode(x) # (B, S, E)
-        
-        if not max_length:
-            max_length = x.size(1)
-
-        outputs = torch.ones((x.size()[0], max_length)).type_as(x).long() * sos_idx
-        for step in range(1, max_length):
-            y = outputs[:, :step]
-            probs = self.transformer.decode(y, encoder_output)
-            output = torch.argmax(probs, dim=-1)
+            Input
+                x: str
+            Output
+                (B, L, C) logits
+            """
             
-            # Uncomment if you want to see step by step predicitons
-            # print(f"Knowing {y} we output {output[:, -1]}")
-
-            if output[:, -1].detach().numpy() in (eos_idx, sos_idx):
-                break
-            outputs[:, step] = output[:, -1]
+            # Pad the tokens with beginning and end of sentence tokens
+            # sos_tensor = torch.full((1, x.size(1), x.size(2)), sos_idx, dtype=x.dtype, device=x.device)
+            # eos_tensor = torch.full((1, x.size(1), x.size(2)), eos_idx, dtype=x.dtype, device=x.device)
             
-        
-        return outputs
+            # X = torch.cat([
+            #     sos_tensor, 
+            #     x, 
+            #     eos_tensor],dim=1
+            # )
+            # X = sos_tensor + x + eos_tensor
+            # print(X.shape)
+            X = x
+            print(X.shape)
+            encoder_output, mask = self.encode(X) # (B, S, E)
+            
+            if not max_length:
+                max_length = X.size(1)
+
+            outputs = torch.ones((X.size()[0], max_length)).type_as(X).long() * sos_idx
+            for step in range(1, max_length):
+                y = outputs[:, :step]
+                probs = self.decode(y, encoder_output)
+                output = torch.argmax(probs, dim=-1)
+                
+                # Uncomment if you want to see step by step predicitons
+                # print(f"Knowing {y} we output {output[:, -1]}")
+
+                if output[:, -1].detach().numpy() in (eos_idx, sos_idx):
+                    break
+                outputs[:, step] = output[:, -1]
+                
+            
+            return outputs
+
+if __name__ == "__main__":
+    trans = Transformer()
