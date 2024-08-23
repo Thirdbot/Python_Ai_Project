@@ -14,6 +14,7 @@ import pyarrow.parquet as pq
 import dask.dataframe as dd
 import dask.array as da
 import fastparquet as fp
+import test
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -52,24 +53,19 @@ class Program:
             couple_list = self.findcouple()
             count = 0
             model = Transformers()
-            for data_path in self.file_csv:
-                for couple in [count]:
-                    print(couple)
+            if (self.run_train):
+                for data_path in self.file_csv:
+                    for couple in couple_list[count]:
 
-                    self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
-                    self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
+                        self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
+                        self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
 
-                    print(f"run model: {couple}")
-                    if (self.run_train):
+                        print(f"run model: {couple}")
                         loss = model.runtrain(self.inputs,self.outputs)
 
-                        
-                  
-                    
-                count += 1
+                    count += 1
             if os.path.exists("model_checkpoint.pth"):
-                    model.test_input()
-            pass
+                model.test_input()
         
 
     
@@ -114,8 +110,6 @@ class Program:
             for rows in embedd_file[type][label]:
                 saved.append(torch.from_numpy(rows['embeddings']))
             return saved
-
-
 
     def findcouple(self):
             info = self.load_jsons("file_info.json")
@@ -182,10 +176,10 @@ class Program:
         
 
 
-    # def load_jsons(self, file_path):
-    #     with open(file_path, 'rb') as file:
-    #         df = pd.read_json(file)
-    #         return df.to_dict()
+    def load_jsons(self, file_path):
+        with open(file_path, 'rb') as file:
+            df = pd.read_json(file)
+            return df.to_dict()
             
             
     def CheckNeed(self,make_file):

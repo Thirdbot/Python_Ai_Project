@@ -2,6 +2,17 @@ import torch
 import torch.nn as nn
 import math
 from tqdm import tqdm
+import numpy as np
+from torch.utils.data import Dataset
+import time
+import matplotlib.pyplot as plt
+
+from torch.utils.data import DataLoader
+from torch.nn.utils.rnn import pad_sequence
+from mpl_toolkits.axes_grid1 import ImageGrid
+
+np.random.seed(0)
+
 
 class MultiHeadAttention(nn.Module):
     def __init__(self, hidden_dim=256, num_heads=4):
@@ -187,10 +198,10 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         self.n_dim = n_dim
 
-        self.embedding = nn.Embedding(
-            num_embeddings=vocab_size, 
-            embedding_dim=n_dim
-        )
+        # self.embedding = nn.Embedding(
+        #     num_embeddings=vocab_size, 
+        #     embedding_dim=n_dim
+        # )
         self.positional_encoding = PositionalEncoding(
             d_model=n_dim, 
             dropout=dropout
@@ -201,7 +212,8 @@ class Encoder(nn.Module):
         
         
     def forward(self, x, padding_mask=None):
-        x = self.embedding(x) * math.sqrt(self.n_dim)
+        # x = self.embedding(x) * math.sqrt(self.n_dim)
+        x = x * math.sqrt(self.n_dim)
         x = self.positional_encoding(x)
         for block in self.encoder_blocks:
             x = block(x=x, src_padding_mask=padding_mask)
@@ -331,7 +343,7 @@ class Transformer(nn.Module):
         """
 
         mask = (x == self.PAD_IDX).float()
-        encoder_padding_mask = mask.masked_fill(mask == 1, float('-inf'))
+        encoder_padding_mask = mask * float('-inf')
         
         # (B, S, E)
         encoder_output = self.encoder(
@@ -446,35 +458,29 @@ def predict(
         
         return outputs
 
-import numpy as np
-import torch
-from torch.utils.data import Dataset
-
-
-np.random.seed(0)
 
 def generate_random_string():
     len = np.random.randint(10, 20)
     return "".join([chr(x) for x in np.random.randint(97, 97+26, len)])
 
 class ReverseDataset(Dataset):
-    def __init__(self, n_samples, pad_idx, sos_idx, eos_idx):
+    def __init__(self,emb, n_samples, pad_idx, sos_idx, eos_idx):
         super(ReverseDataset, self).__init__()
         self.pad_idx = pad_idx
         self.sos_idx = sos_idx
         self.eos_idx = eos_idx
-        self.values = [generate_random_string() for _ in range(n_samples)]
-        self.labels = [x[::-1] for x in self.values]
+        self.values = [ _ for _ in range(n_samples)]
+        self.labels = [self.text_transform(emb)[::-1] for x in self.values]
 
     def __len__(self):
         return len(self.values)  # number of samples in the dataset
 
     def __getitem__(self, index):
-        return self.text_transform(self.values[index].rstrip("\n")), \
-            self.text_transform(self.labels[index].rstrip("\n"))
+        return self.text_transform(self.values[index]), \
+            self.text_transform(self.labels[index])
         
     def text_transform(self, x):
-        return torch.tensor([self.sos_idx] + [ord(z)-97+3 for z in x] + [self.eos_idx])
+        return torch.tensor([self.sos_idx] + x + [self.eos_idx])
 
 PAD_IDX = 0
 SOS_IDX = 1
@@ -533,16 +539,6 @@ def evaluate(model, loader, loss_fn):
 
     return losses / len(list(loader)), acc / len(list(loader)), history_loss, history_acc
 
-import torch
-import time
-import torch.nn as nn
-import numpy as np
-import matplotlib.pyplot as plt
-
-from tqdm import tqdm
-from torch.utils.data import DataLoader
-from torch.nn.utils.rnn import pad_sequence
-from mpl_toolkits.axes_grid1 import ImageGrid
 
 
 def collate_fn(batch):
@@ -559,45 +555,29 @@ def collate_fn(batch):
     return src_batch, tgt_batch
 
 class Test_Model:
-    def __init__(self,train,eval) -> None:
-        # Model hyperparameters
-        args = {
-            'vocab_size': 128,
-            'model_dim': 128,
-            'dropout': 0.1,
-            'n_encoder_layers': 1,
-            'n_decoder_layers': 1,
-            'n_heads': 4
-        }
+    def __init__(self,args) -> None:
+       
 
         # Define model here
-        model = Transformer(**args)
-
-        # Instantiate datasets
-        # train_iter = ReverseDataset(50000, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
-        # eval_iter = ReverseDataset(10000, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
-        # dataloader_train = DataLoader(train, batch_size=2, collate_fn=collate_fn)
-        # dataloader_val = DataLoader(eval, batch_size=2, collate_fn=collate_fn)
-
-        dataloader_train = train
-        dataloader_val = eval
-
-        
-        # During debugging, we ensure sources and targets are indeed reversed
-        # s, t = next(iter(dataloader_train))
-        # print(s[:4, ...])
-        # print(t[:4, ...])
-        # print(s.size())
-
-        # Initialize model parameters
-        for p in model.parameters():
+        self.model = Transformer(**args)
+        for p in self.model.parameters():
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
         # Define loss function : we ignore logits which are padding tokens
-        loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.98), eps=1e-9)
+        self.loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001, betas=(0.9, 0.98), eps=1e-9)
 
+    def setup(self,train_v,eval_v):
+        # Instantiate datasets
+        train_iter = ReverseDataset(train_v,50000, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
+        eval_iter = ReverseDataset(eval_v,10000, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
+        self.dataloader_train = DataLoader(train_iter, batch_size=2, collate_fn=collate_fn)
+        self.dataloader_val = DataLoader(eval_iter, batch_size=2, collate_fn=collate_fn)
+
+       
+    
+    def run(self):
         # Save history to dictionnary
         history = {
             'train_loss': [],
@@ -607,19 +587,19 @@ class Test_Model:
         }
 
         # Main loop
-        for epoch in range(1, 4):
+        for epoch in range(1, 2):
             start_time = time.time()
-            train_loss, train_acc, hist_loss, hist_acc = train(model, optimizer, dataloader_train, loss_fn, epoch)
+            train_loss, train_acc, hist_loss, hist_acc = train(self.model, self.optimizer, self.dataloader_train, self.loss_fn, epoch)
             history['train_loss'] += hist_loss
             history['train_acc'] += hist_acc
             end_time = time.time()
-            val_loss, val_acc, hist_loss, hist_acc = evaluate(model, dataloader_val, loss_fn)
+            val_loss, val_acc, hist_loss, hist_acc = evaluate(self.model, self.dataloader_val, self.loss_fn)
             history['eval_loss'] += hist_loss
             history['eval_acc'] += hist_acc
             print((f"Epoch: {epoch}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s"))
 
         fig = plt.figure(figsize=(10., 10.))
-        images = model.decoder.decoder_blocks[0].cross_attention.attention_weigths[0,...].detach().numpy()
+        images = self.model.decoder.decoder_blocks[0].cross_attention.attention_weigths[0,...].detach().numpy()
         grid = ImageGrid(fig, 111,  # similar to subplot(111)
                         nrows_ncols=(2, 2),  # creates 2x2 grid of axes
                         axes_pad=0.1,  # pad between axes in inch.
@@ -637,14 +617,14 @@ class Translator(nn.Module):
     def __call__(self, sentence, max_length=None, pad=False):
         
         x = torch.tensor(sentence)
-        # x = torch.cat([torch.tensor([SOS_IDX]), x, torch.tensor([EOS_IDX])]).unsqueeze(0)
+        #x = torch.cat([torch.tensor([SOS_IDX]), sentence, torch.tensor([EOS_IDX])]).unsqueeze(0)
         
         encoder_output, mask = self.transformer.encode(x) # (B, S, E)
         if not max_length:
             max_length = x.size(1)
             
         outputs = torch.ones((x.size()[0], max_length)).type_as(x).long() * SOS_IDX
-        
+
         for step in range(1, max_length):
             y = outputs[:, :step]
             probs = self.transformer.decode(y, encoder_output)
@@ -656,3 +636,7 @@ class Translator(nn.Module):
             
         
         return outputs[0]
+
+if __name__ == "__main__":
+    test = Test_Model
+    trans = Translator

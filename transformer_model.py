@@ -9,9 +9,7 @@ import matplotlib.pyplot as plt
 import torch.nn.utils.rnn as rnn_utils
 from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
-from interference import TrainInterference
-import interference
-from test import *
+import test
 
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
@@ -32,58 +30,72 @@ class Transformers:
         self.batch = 16 #batch in this refer to batch for training
         self.paddings = 100
 
-        self.train_inter = TrainInterference()
-        self.model = self.train_inter.model
-
-    def load_model(self,path):
-        checkpoint = torch.load(path)
-        self.model.load_state_dict(checkpoint["model_state"])
-        return self.model
-    
-    def test_input(self):
-        file = "model_checkpoint.pth"
-        self.model = self.load_model(file)
-        datasets = Datasets()
-        classification_layer = torch.nn.Linear(self.ndim, self.ndim)
+        # self.train_inter = TrainInterference()
         
-        while True:
-            # sentence = "do you use credit cards?"
-            sentence = input("You: ")
-            if sentence == "quit":
-                break
+        self.args = {
+            'vocab_size': 100,
+            'model_dim': 768,
+            'dropout': 0.1,
+            'n_encoder_layers': 1,
+            'n_decoder_layers': 1,
+            'n_heads': 4
+        }
+        self.model = test.Test_Model(self.args)
+        self.transformer = self.model.model
 
-            embbed_sent = self.ListEmbeddings(sentence,self.word_size)
-            embbed_out = torch.zeros(self.word_size,self.word_size,self.ndim)
-            with torch.no_grad():
-                #self.model.eval()
-                #output = self.train_inter.runpredict(x=embbed_sent,max_length=100)
-                translater = Translator(self.model)
-                output = translater(embbed_sent,max_length=self.paddings)
-                print(output)
-            
-    def runtrain(self,inputs,outs):
-        loss = self.feedmodel(inputs,outs,hiddensize=self.hiddensize,ndim=self.ndim)
-        return loss
-    
+
     def load_model(self, path):
         checkpoint = torch.load(path)
-        self.model.load_state_dict(checkpoint['model_state'])
-        self.train_inter.optimizer.load_state_dict(checkpoint['optimizer_state'])
+        
+        # Load model state
+        self.transformer.load_state_dict(checkpoint['model_state'])
+        
+        # Optionally load optimizer state if available
+        if 'optimizer_state' in checkpoint:
+            self.model.optimizer.load_state_dict(checkpoint['optimizer_state'])
+        
+        # Update internal attributes
         self.word_size = checkpoint.get('word_size', self.word_size)
         self.hiddensize = checkpoint.get('hiddensize', self.hiddensize)
         self.ndim = checkpoint.get('ndim', self.ndim)
+        
         print(f'Model loaded from {path}')
-        return self.model
-    
+        return self.transformer
+
     def save_model(self, path):
+        # Save model state
         torch.save({
-            'model_state': self.model.state_dict(),
-            'optimizer_state': self.train_inter.optimizer.state_dict(),
+            'model_state': self.transformer.state_dict(),
+            'optimizer_state': self.model.optimizer.state_dict() if hasattr(self.model, 'optimizer') else None,
             'word_size': self.word_size,
             'hiddensize': self.hiddensize,
             'ndim': self.ndim,
         }, path)
         print(f'Model saved to {path}')
+
+    def test_input(self):
+        file = "model_checkpoint.pth"
+        self.transformer = self.load_model(file)
+        self.transformer.eval()  # Set model to evaluation mode
+        
+        while True:
+            sentence = input("You: ")
+            if sentence.lower() == "quit":
+                break
+
+            embbed_sent = self.ListEmbeddings(sentence, self.word_size)
+            print(embbed_sent.shape)
+            embbed_sent = embbed_sent.to("cuda")  # Ensure embeddings are on the correct device
+
+            with torch.no_grad():
+                # Assuming Translator is a method/function of the model
+                output = test.Translator(self.transformer)(embbed_sent, max_length=self.paddings)
+                print(output)
+
+            
+    def runtrain(self,inputs,outs):
+        loss = self.feedmodel(inputs,outs,hiddensize=self.hiddensize,ndim=self.ndim)
+        return loss
 
     def ListEmbeddings(self,list_input,word_size):
         datasets_Detail = Datasets()
@@ -116,47 +128,41 @@ class Transformers:
     
     def feedmodel(self,list_input,list_output,hiddensize,ndim):
 
-        #dynamic plot
-        plt.ion()
-        fig, ax = plt.subplots()
-        ax.set_xlabel('Epoch')
-        ax.set_ylabel('Loss')
-        line, = ax.plot([], [], 'r-')
-        ax.set_xlim(0, self.n_epochs)
-        ax.set_ylim(0, 1)  # Adjust based on expected loss values
+        # #dynamic plot
+        # plt.ion()
+        # fig, ax = plt.subplots()
+        # ax.set_xlabel('Epoch')
+        # ax.set_ylabel('Loss')
+        # line, = ax.plot([], [], 'r-')
+        # ax.set_xlim(0, self.n_epochs)
+        # ax.set_ylim(0, 1)  # Adjust based on expected loss values
 
-        
-        test_model = Test_Model
-        self.model.train()
+        self.transformer.train()
         zipdata = zip(list_input,list_output)
-        for epochs in range(self.n_epochs):
+
+        for epochs in tqdm(range(self.n_epochs),leave=False):
+
             for list_in, list_out in zipdata:
                 
-                #load generator for fast computation
-                # inputs_batch = self.batch_data(list_in,batch=self.batch)
-                # outputs_batch = self.batch_data(list_out,batch=self.batch)
-                #inputs_size = len(list(list_in))
-                # print("OUTTER: ",list_in.shape)
-                #multithread not really :(
-                input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=1)
-                output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=1)
+                #batch data again
+                input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=4)
+                output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=4)
                 
-                self.train_inter.optimizer.zero_grad()
-                for list_inin,list_outout in zip(input_loader,output_loader):
-                    #get each sentence batches may be can get batch token for next tokenprediction instead and treat as senctence??? sliding window techniques by one
-                    #use fold paddinggs with - infinity in seq_len size for each token slidings
-                    #iterate sub generator for computertion
-                    
+                self.model.optimizer.zero_grad()
+                zipdata2 = zip(input_loader,output_loader)
+                for list_inin,list_outout in zipdata2:
+
                     list_inin = list_inin.to("cuda", non_blocking=True)
                     list_outout = list_outout.to("cuda", non_blocking=True)
                     print("INPUT SHAPE: ",list_inin.shape)
                     print("OUTPUT SHAPE: ",list_outout.shape)
                     
-                    output = test_model(list_inin,list_outout)
-                   
+                    self.model.setup(list_inin,list_outout)
+                    self.model.run()
                     
-            plt.ioff()  # Turn off interactive mode
-            plt.close()
+                    
+            # plt.ioff()  # Turn off interactive mode
+            # plt.close()
 
         model_save_path = "model_checkpoint.pth"
         self.save_model(model_save_path)
