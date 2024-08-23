@@ -11,8 +11,7 @@ from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
 from interference import TrainInterference
 import interference
-from language_model import Transformer
-
+from test import *
 
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
@@ -57,30 +56,11 @@ class Transformers:
             embbed_out = torch.zeros(self.word_size,self.word_size,self.ndim)
             with torch.no_grad():
                 #self.model.eval()
-                output = self.train_inter.runpredict(x=embbed_sent,max_length=100)
-        
-                # pooled_output = output.mean(dim=1)
-                # logits = classification_layer(pooled_output)
-                 # Get predictions
-            # print("logits: ",logits)
-            # print("logits size: ",logits.shape)
-            # predicted = torch.argmax(logits, dim=-1) 
-            # # print("argmax: ",predicted)
-            # # print("argmax shape: ",predicted.shape)
-            # # Get probabilities and decode
-            # probs = torch.softmax(logits, dim=1)
-            # # print("probs shape: ",probs.shape)
-            # #pred_probs = probs[range(logits.size(0)), predicted]
-            # pred_probs = probs[range(logits.size(0)), predicted]
-            # # print("preprobs shape: ",pred_probs.shape)
+                #output = self.train_inter.runpredict(x=embbed_sent,max_length=100)
+                translater = Translator(self.model)
+                output = translater(embbed_sent,max_length=self.paddings)
+                print(output)
             
-            # accurate_output = torch.matmul(torch.tensor(pred_probs,dtype=float),torch.tensor(logits,dtype=float))
-            # torch.tensor(accurate_output)
-            # outputs = torch.argmax(accurate_output, dim=-1) 
-            # # Decode and print the prediction
-            # decoded_output = datasets.decode(outputs)
-            # print("Decoded output:", decoded_output)
-
     def runtrain(self,inputs,outs):
         loss = self.feedmodel(inputs,outs,hiddensize=self.hiddensize,ndim=self.ndim)
         return loss
@@ -132,12 +112,7 @@ class Transformers:
         return padded_embeds.transpose(0,1)
 
 
-    # def batch_data(self,list_in,batch):
-    #     for i in list_in:
-    #         for idx in range(0,len(i),batch):
-    #             batched = i[idx:min(idx+batch,len(i))]
-    #             yield batched
-    
+
     
     def feedmodel(self,list_input,list_output,hiddensize,ndim):
 
@@ -151,50 +126,37 @@ class Transformers:
         ax.set_ylim(0, 1)  # Adjust based on expected loss values
 
         
-
-        # for epochs in tqdm(range(self.n_epochs), desc="Training Epochs"):
-        epoch_loss = 0
+        test_model = Test_Model
         self.model.train()
-        running_loss = 0.0
         zipdata = zip(list_input,list_output)
-        for list_in, list_out in tqdm(zipdata,desc="Batches",leave=False):
-            
-            #load generator for fast computation
-            # inputs_batch = self.batch_data(list_in,batch=self.batch)
-            # outputs_batch = self.batch_data(list_out,batch=self.batch)
-            #inputs_size = len(list(list_in))
-            # print("OUTTER: ",list_in.shape)
-            #multithread not really :(
-            input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=0,collate_fn=interference.collate_fn)
-            output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=0,collate_fn=interference.collate_fn)
-            
-            self.train_inter.optimizer.zero_grad()
-            for list_inin,list_outout in zip(input_loader,output_loader):
-                #get each sentence batches may be can get batch token for next tokenprediction instead and treat as senctence??? sliding window techniques by one
-                #use fold paddinggs with - infinity in seq_len size for each token slidings
-                #iterate sub generator for computertion
-
-                list_inin = list_inin.to("cuda", non_blocking=True)
-                list_outout = list_outout.to("cuda", non_blocking=True)
-
-                # self.train_inter.dataloader_train(list_inin)
-                # self.train_inter.dataloader_val(list_outout)
-                #self.train_inter.dataloader_train(train_itr)
-                #d_v = self.train_inter.dataloader_val(val_itr)
-                train_itr = self.train_inter.train_iter(list_inin)
-                val_itr = self.train_inter.eval_iter(list_outout)
-                d_t = self.train_inter.dataloader_train(train_itr)
-                d_v = self.train_inter.dataloader_val(val_itr)
-                state_loss = self.train_inter.runtrain(d_t,d_v)
-
-                line.set_xdata(range(0,len(state_loss)))
-                line.set_ydata(state_loss)
-                ax.set_ylim(max(state_loss)*1.1)  
-                fig.canvas.draw()
-                fig.canvas.flush_events()
+        for epochs in range(self.n_epochs):
+            for list_in, list_out in zipdata:
                 
-        plt.ioff()  # Turn off interactive mode
-        plt.close()
+                #load generator for fast computation
+                # inputs_batch = self.batch_data(list_in,batch=self.batch)
+                # outputs_batch = self.batch_data(list_out,batch=self.batch)
+                #inputs_size = len(list(list_in))
+                # print("OUTTER: ",list_in.shape)
+                #multithread not really :(
+                input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=1)
+                output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=1)
+                
+                self.train_inter.optimizer.zero_grad()
+                for list_inin,list_outout in zip(input_loader,output_loader):
+                    #get each sentence batches may be can get batch token for next tokenprediction instead and treat as senctence??? sliding window techniques by one
+                    #use fold paddinggs with - infinity in seq_len size for each token slidings
+                    #iterate sub generator for computertion
+                    
+                    list_inin = list_inin.to("cuda", non_blocking=True)
+                    list_outout = list_outout.to("cuda", non_blocking=True)
+                    print("INPUT SHAPE: ",list_inin.shape)
+                    print("OUTPUT SHAPE: ",list_outout.shape)
+                    
+                    output = test_model(list_inin,list_outout)
+                   
+                    
+            plt.ioff()  # Turn off interactive mode
+            plt.close()
 
         model_save_path = "model_checkpoint.pth"
         self.save_model(model_save_path)
@@ -202,4 +164,4 @@ class Transformers:
 
 
 if __name__ == "__main__":
-    transformer = Transformers()
+    transformers = Transformers()

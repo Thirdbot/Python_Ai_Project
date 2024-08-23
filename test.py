@@ -2,29 +2,6 @@ import torch
 import torch.nn as nn
 import math
 from tqdm import tqdm
-import numpy as np
-import torch
-from torch.utils.data import Dataset
-
-import torch
-import time
-import torch.nn as nn
-import numpy as np
-import matplotlib.pyplot as plt
-
-from tqdm import tqdm
-from torch.utils.data import DataLoader
-from torch.nn.utils.rnn import pad_sequence
-from mpl_toolkits.axes_grid1 import ImageGrid
-
-
-PAD_IDX = 0
-SOS_IDX = 1
-EOS_IDX = 2
-
-np.random.seed(0)
-
-
 
 class MultiHeadAttention(nn.Module):
     def __init__(self, hidden_dim=256, num_heads=4):
@@ -145,7 +122,6 @@ class MultiHeadAttention(nn.Module):
         self.attention_weigths = attn_weights
         
         return output
-    
 # Taken from https://pytorch.org/tutorials/beginner/transformer_tutorial.html#define-the-model
 class PositionalEncoding(nn.Module):
 
@@ -180,7 +156,6 @@ class PositionWiseFeedForward(nn.Module):
 
     def forward(self, x):
         return self.fc2(self.relu(self.fc1(x)))
-    
 class EncoderBlock(nn.Module):
     def __init__(self, n_dim: int, dropout: float, n_heads: int):
         super(EncoderBlock, self).__init__()
@@ -226,10 +201,8 @@ class Encoder(nn.Module):
         
         
     def forward(self, x, padding_mask=None):
-        # x = self.embedding(x.long()) * math.sqrt(self.n_dim)
-        x = x  * math.sqrt(self.n_dim)
+        x = self.embedding(x) * math.sqrt(self.n_dim)
         x = self.positional_encoding(x)
-        print(x.shape)
         for block in self.encoder_blocks:
             x = block(x=x, src_padding_mask=padding_mask)
         return x
@@ -294,8 +267,7 @@ class Decoder(nn.Module):
         
         
     def forward(self, tgt, memory, tgt_mask=None, tgt_padding_mask=None, memory_padding_mask=None):
-        # x = self.embedding(tgt)
-        
+        x = self.embedding(tgt)
         x = self.positional_encoding(x)
 
         for block in self.decoder_blocks:
@@ -306,15 +278,15 @@ class Decoder(nn.Module):
                 tgt_padding_mask=tgt_padding_mask, 
                 memory_padding_mask=memory_padding_mask)
         return x
-
-
 def generate_square_subsequent_mask(size: int):
       """Generate a triangular (size, size) mask. From PyTorch docs."""
       mask = (1 - torch.triu(torch.ones(size, size), diagonal=1)).bool()
       mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
       return mask
 
-
+import torch
+import torch.nn as nn
+import math
 
 class Transformer(nn.Module):
     def __init__(self, **kwargs):
@@ -428,7 +400,149 @@ class Transformer(nn.Module):
         )  
         
         return decoder_output
-    
+
+def predict(
+            self,
+            x: torch.Tensor,
+            sos_idx: int=1,
+            eos_idx: int=2,
+            max_length: int=None
+        ) -> torch.Tensor:
+        """
+        Method to use at inference time. Predict y from x one token at a time. This method is greedy
+        decoding. Beam search can be used instead for a potential accuracy boost.
+
+        Input
+            x: str
+        Output
+            (B, L, C) logits
+        """
+
+        # Pad the tokens with beginning and end of sentence tokens
+        x = torch.cat([
+            torch.tensor([sos_idx]), 
+            x, 
+            torch.tensor([eos_idx])]
+        ).unsqueeze(0)
+
+        encoder_output, mask = self.transformer.encode(x) # (B, S, E)
+        
+        if not max_length:
+            max_length = x.size(1)
+
+        outputs = torch.ones((x.size()[0], max_length)).type_as(x).long() * sos_idx
+        for step in range(1, max_length):
+            y = outputs[:, :step]
+            probs = self.transformer.decode(y, encoder_output)
+            output = torch.argmax(probs, dim=-1)
+            
+            # Uncomment if you want to see step by step predicitons
+            # print(f"Knowing {y} we output {output[:, -1]}")
+
+            if output[:, -1].detach().numpy() in (eos_idx, sos_idx):
+                break
+            outputs[:, step] = output[:, -1]
+            
+        
+        return outputs
+
+import numpy as np
+import torch
+from torch.utils.data import Dataset
+
+
+np.random.seed(0)
+
+def generate_random_string():
+    len = np.random.randint(10, 20)
+    return "".join([chr(x) for x in np.random.randint(97, 97+26, len)])
+
+class ReverseDataset(Dataset):
+    def __init__(self, n_samples, pad_idx, sos_idx, eos_idx):
+        super(ReverseDataset, self).__init__()
+        self.pad_idx = pad_idx
+        self.sos_idx = sos_idx
+        self.eos_idx = eos_idx
+        self.values = [generate_random_string() for _ in range(n_samples)]
+        self.labels = [x[::-1] for x in self.values]
+
+    def __len__(self):
+        return len(self.values)  # number of samples in the dataset
+
+    def __getitem__(self, index):
+        return self.text_transform(self.values[index].rstrip("\n")), \
+            self.text_transform(self.labels[index].rstrip("\n"))
+        
+    def text_transform(self, x):
+        return torch.tensor([self.sos_idx] + [ord(z)-97+3 for z in x] + [self.eos_idx])
+
+PAD_IDX = 0
+SOS_IDX = 1
+EOS_IDX = 2
+
+def train(model, optimizer, loader, loss_fn, epoch):
+    model.train()
+    losses = 0
+    acc = 0
+    history_loss = []
+    history_acc = [] 
+
+    with tqdm(loader, position=0, leave=True) as tepoch:
+        for x, y in tepoch:
+            tepoch.set_description(f"Epoch {epoch}")
+
+            optimizer.zero_grad()
+            logits = model(x, y[:, :-1])
+            loss = loss_fn(logits.contiguous().view(-1, model.vocab_size), y[:, 1:].contiguous().view(-1))
+            loss.backward()
+            optimizer.step()
+            losses += loss.item()
+            
+            preds = logits.argmax(dim=-1)
+            masked_pred = preds * (y[:, 1:]!=PAD_IDX)
+            accuracy = (masked_pred == y[:, 1:]).float().mean()
+            acc += accuracy.item()
+            
+            history_loss.append(loss.item())
+            history_acc.append(accuracy.item())
+            tepoch.set_postfix(loss=loss.item(), accuracy=100. * accuracy.item())
+
+    return losses / len(list(loader)), acc / len(list(loader)), history_loss, history_acc
+
+
+def evaluate(model, loader, loss_fn):
+    model.eval()
+    losses = 0
+    acc = 0
+    history_loss = []
+    history_acc = [] 
+
+    for x, y in tqdm(loader, position=0, leave=True):
+
+        logits = model(x, y[:, :-1])
+        loss = loss_fn(logits.contiguous().view(-1, model.vocab_size), y[:, 1:].contiguous().view(-1))
+        losses += loss.item()
+        
+        preds = logits.argmax(dim=-1)
+        masked_pred = preds * (y[:, 1:]!=PAD_IDX)
+        accuracy = (masked_pred == y[:, 1:]).float().mean()
+        acc += accuracy.item()
+        
+        history_loss.append(loss.item())
+        history_acc.append(accuracy.item())
+
+    return losses / len(list(loader)), acc / len(list(loader)), history_loss, history_acc
+
+import torch
+import time
+import torch.nn as nn
+import numpy as np
+import matplotlib.pyplot as plt
+
+from tqdm import tqdm
+from torch.utils.data import DataLoader
+from torch.nn.utils.rnn import pad_sequence
+from mpl_toolkits.axes_grid1 import ImageGrid
 
 
 def collate_fn(batch):
@@ -444,6 +558,77 @@ def collate_fn(batch):
     tgt_batch = pad_sequence(tgt_batch, padding_value=PAD_IDX, batch_first=True)
     return src_batch, tgt_batch
 
+class Test_Model:
+    def __init__(self,train,eval) -> None:
+        # Model hyperparameters
+        args = {
+            'vocab_size': 128,
+            'model_dim': 128,
+            'dropout': 0.1,
+            'n_encoder_layers': 1,
+            'n_decoder_layers': 1,
+            'n_heads': 4
+        }
+
+        # Define model here
+        model = Transformer(**args)
+
+        # Instantiate datasets
+        # train_iter = ReverseDataset(50000, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
+        # eval_iter = ReverseDataset(10000, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
+        # dataloader_train = DataLoader(train, batch_size=2, collate_fn=collate_fn)
+        # dataloader_val = DataLoader(eval, batch_size=2, collate_fn=collate_fn)
+
+        dataloader_train = train
+        dataloader_val = eval
+
+        
+        # During debugging, we ensure sources and targets are indeed reversed
+        # s, t = next(iter(dataloader_train))
+        # print(s[:4, ...])
+        # print(t[:4, ...])
+        # print(s.size())
+
+        # Initialize model parameters
+        for p in model.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+
+        # Define loss function : we ignore logits which are padding tokens
+        loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.98), eps=1e-9)
+
+        # Save history to dictionnary
+        history = {
+            'train_loss': [],
+            'eval_loss': [],
+            'train_acc': [],
+            'eval_acc': []
+        }
+
+        # Main loop
+        for epoch in range(1, 4):
+            start_time = time.time()
+            train_loss, train_acc, hist_loss, hist_acc = train(model, optimizer, dataloader_train, loss_fn, epoch)
+            history['train_loss'] += hist_loss
+            history['train_acc'] += hist_acc
+            end_time = time.time()
+            val_loss, val_acc, hist_loss, hist_acc = evaluate(model, dataloader_val, loss_fn)
+            history['eval_loss'] += hist_loss
+            history['eval_acc'] += hist_acc
+            print((f"Epoch: {epoch}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s"))
+
+        fig = plt.figure(figsize=(10., 10.))
+        images = model.decoder.decoder_blocks[0].cross_attention.attention_weigths[0,...].detach().numpy()
+        grid = ImageGrid(fig, 111,  # similar to subplot(111)
+                        nrows_ncols=(2, 2),  # creates 2x2 grid of axes
+                        axes_pad=0.1,  # pad between axes in inch.
+                        )
+
+        for ax, im in zip(grid, images):
+            # Iterating over the grid returns the Axes.
+            ax.imshow(im)
+
 class Translator(nn.Module):
     def __init__(self, transformer):
         super(Translator, self).__init__()
@@ -451,7 +636,8 @@ class Translator(nn.Module):
     
     def __call__(self, sentence, max_length=None, pad=False):
         
-        x = sentence
+        x = torch.tensor(sentence)
+        # x = torch.cat([torch.tensor([SOS_IDX]), x, torch.tensor([EOS_IDX])]).unsqueeze(0)
         
         encoder_output, mask = self.transformer.encode(x) # (B, S, E)
         if not max_length:
@@ -469,6 +655,4 @@ class Translator(nn.Module):
             outputs[:, step] = output[:, -1]
             
         
-        return self.tokens_to_str(outputs[0])
-
-
+        return outputs[0]

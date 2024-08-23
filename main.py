@@ -53,7 +53,7 @@ class Program:
             count = 0
             model = Transformers()
             for data_path in self.file_csv:
-                for couple in couple_list[count]:
+                for couple in [count]:
                     print(couple)
 
                     self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
@@ -69,9 +69,6 @@ class Program:
                 count += 1
             if os.path.exists("model_checkpoint.pth"):
                     model.test_input()
-            ##some model going on here
-                        
-            ###coupling datasets (may be i not using json file or smt just runtime embeddings osmt)
             pass
         
 
@@ -118,6 +115,8 @@ class Program:
                 saved.append(torch.from_numpy(rows['embeddings']))
             return saved
 
+
+
     def findcouple(self):
             info = self.load_jsons("file_info.json")
             store_couple = []
@@ -142,20 +141,20 @@ class Program:
                     return
             return store_couple
         
-    def load_parquet(self,file_path):
-        parquet_file = pq.ParquetFile(file_path)
-        df = pq.read_table(file_path,memory_map=True,use_threads=True)
+    # def load_parquet(self,file_path):
+    #     parquet_file = pq.ParquetFile(file_path)
+    #     df = pq.read_table(file_path,memory_map=True,use_threads=True)
         
-        # table = pq.read_table(file_path)
-        # df = table.to_pandas()
-        # gen = []
-        # df = pq.ParquetFile(file_path,memory_map=True)
-        # for row in df.iter_batches(batch_size=10):
-        #     print('iter...')
+    #     # table = pq.read_table(file_path)
+    #     # df = table.to_pandas()
+    #     # gen = []
+    #     # df = pq.ParquetFile(file_path,memory_map=True)
+    #     # for row in df.iter_batches(batch_size=10):
+    #     #     print('iter...')
 
-        #     gen.append(row.to_pandas().to_dict())
-        # return gen
-        return df.to_pydict()
+    #     #     gen.append(row.to_pandas().to_dict())
+    #     # return gen
+    #     return df.to_pydict()
     
     def load_feature(self,file_path):
         df = pd.read_feather(file_path)
@@ -183,10 +182,10 @@ class Program:
         
 
 
-    def load_jsons(self, file_path):
-        with open(file_path, 'rb') as file:
-            df = pd.read_json(file)
-            return df.to_dict()
+    # def load_jsons(self, file_path):
+    #     with open(file_path, 'rb') as file:
+    #         df = pd.read_json(file)
+    #         return df.to_dict()
             
             
     def CheckNeed(self,make_file):
