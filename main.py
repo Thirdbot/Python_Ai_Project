@@ -29,7 +29,7 @@ class Program:
            os.path.isfile(self.path)
         except:
             Tokenization()
-            Program()
+            self.__init__()
         
         self.datapath = "datasets"
         self.batch = 32 #batch size in this refer to bbatch in save files mean 32 batch for n times
@@ -59,28 +59,49 @@ class Program:
 
                         self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                         self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
-
-                        print(f"run model: {couple}")
-                        loss = model.runtrain(self.inputs,self.outputs)
+                        self.embedded(arr=self.inputs)
+                        
+                        # print(f"run model: {couple}")
+                        #loss = model.runtrain(self.inputs,self.outputs)
 
                     count += 1
             if os.path.exists("model_checkpoint.pth"):
-                model.test_input()
+                output = model.test_input()
+                
         
-
+    def embedded(self,arr):
+        embed = nn.Embedding(100,128).to("cuda")
+        for a in arr:
+            out = embed(a)
+        print(out)
     
-    def pad_array(self,arr, target_length, padding_value=0):
+    #for embeddings 
+    # def pad_array(self,arr, target_length, padding_value=0):
+    #     sequence_lengths = []
+    #     sequence_lengths.append(arr.shape[0])
+    #     padded_embeds = rnn_utils.pad_sequence(arr, batch_first=False, padding_value=padding_value).to("cuda")
+    #     if padded_embeds.shape[1] < target_length:
+    #         num_padding = target_length - padded_embeds.shape[1]
+    #         padding_tensors = torch.zeros((num_padding, padded_embeds.shape[0])).to("cuda")
+    #         padded_embeds = torch.cat([padded_embeds.transpose(0,1), padding_tensors], dim=0).to("cuda")
+    #         sequence_lengths.extend([0] * num_padding)
+    #     
+    #     return padded_embeds.transpose(0,1).to("cuda")
+    
+    def pad_encode_array(self,arr, target_length, padding_value=0):
         sequence_lengths = []
         sequence_lengths.append(arr.shape[0])
-        padded_embeds = rnn_utils.pad_sequence(arr, batch_first=False, padding_value=padding_value).to("cuda")
-        if padded_embeds.shape[1] < target_length:
-            num_padding = target_length - padded_embeds.shape[1]
+        #padded_embeds = rnn_utils.pad_sequence(arr, batch_first=False, padding_value=padding_value).to("cuda")
+        padded_embeds = arr
+        if padded_embeds.shape[0] < target_length:
+            num_padding = target_length - padded_embeds.shape[0]
             padding_tensors = torch.zeros((num_padding, padded_embeds.shape[0])).to("cuda")
-            padded_embeds = torch.cat([padded_embeds.transpose(0,1), padding_tensors], dim=0).to("cuda")
+            padded_embeds = torch.cat([padded_embeds.transpose(-1,0), padding_tensors], dim=0).to("cuda")
             sequence_lengths.extend([0] * num_padding)
-        else:
-            padded_embeds = padded_embeds.transpose(0,1).to("cuda")
-        return padded_embeds.transpose(0,1).to("cuda")
+
+        return padded_embeds.transpose(-1,0).to("cuda")
+    
+    
 
     #it work
     def soupDatasets(self,data_path,label,type,make_file):
@@ -95,11 +116,14 @@ class Program:
             for stuff in embedd_file[type][label]['embeddings']:
                 for row in stuff:
                     numpy_array =torch.stack([torch.tensor(np.array(obj),dtype=torch.long).to("cuda") for obj in row])
-                    padd_arr = self.pad_array(numpy_array,self.pad_size)
+                    #padd_arr = self.pad_array(numpy_array,self.pad_size)
+                    padd_arr = self.pad_encode_array(numpy_array,self.pad_size)
+                    #saved.append(numpy_array)
                     saved.append(padd_arr)
                 result = torch.stack(saved).to("cuda")
+
                 yield result.to("cuda")
-            
+                #yield torch.tensor(np.array(stuff),dtype=torch.long)
             
             
         

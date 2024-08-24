@@ -58,25 +58,28 @@ class MultiHeadAttention(nn.Module):
         
         d_k = query.size(-1)
         tgt_len, src_len = query.size(-2), key.size(-2)
-
+        
         
         # logits = (B, H, tgt_len, E) * (B, H, E, src_len) = (B, H, tgt_len, src_len)
-        logits = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k) 
+        logits = torch.matmul(query, key.transpose(-2,-1)) / math.sqrt(d_k) 
         
+
         # Attention mask here
         if attention_mask is not None:
             if attention_mask.dim() == 2:
                 assert attention_mask.size() == (tgt_len, src_len)
                 attention_mask = attention_mask.unsqueeze(0)
-                logits = logits + attention_mask
-            else:
-                raise ValueError(f"Attention mask size {attention_mask.size()}")
+                
+            logits = logits + attention_mask
         
                 
         # Key mask here
         if key_padding_mask is not None:
-            key_padding_mask = key_padding_mask.unsqueeze(1).unsqueeze(2) # Broadcast over batch size, num heads
+            key_padding_mask = torch.matmul(key_padding_mask.unsqueeze(0).reshape(1,self.num_heads,100,d_k),query.transpose(-2,-1))
+            key_padding_mask = key_padding_mask# Broadcast over batch size, num heads
+            print(logits.shape, key_padding_mask.shape)
             logits = logits + key_padding_mask
+            
         
         
         attention = torch.softmax(logits, dim=-1)
@@ -147,7 +150,7 @@ class PositionalEncoding(nn.Module):
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
         pe = pe.unsqueeze(0)
-        
+
         self.register_buffer('pe', pe)
 
     def forward(self, x):
@@ -155,7 +158,7 @@ class PositionalEncoding(nn.Module):
         Arguments:
             x: Tensor, shape ``[batch_size, seq_len, embedding_dim]``
         """
-        x = x + self.pe[:, :x.size(1), :]
+        x = x + self.pe[:, :x.shape[1], :]
         return x
     
 class PositionWiseFeedForward(nn.Module):
@@ -167,6 +170,7 @@ class PositionWiseFeedForward(nn.Module):
 
     def forward(self, x):
         return self.fc2(self.relu(self.fc1(x)))
+    
 class EncoderBlock(nn.Module):
     def __init__(self, n_dim: int, dropout: float, n_heads: int):
         super(EncoderBlock, self).__init__()
@@ -200,7 +204,7 @@ class Encoder(nn.Module):
 
         # self.embedding = nn.Embedding(
         #     num_embeddings=vocab_size, 
-        #     embedding_dim=n_dim
+        #     embedding_dim=vocab_size,
         # )
         self.positional_encoding = PositionalEncoding(
             d_model=n_dim, 
@@ -212,7 +216,7 @@ class Encoder(nn.Module):
         
         
     def forward(self, x, padding_mask=None):
-        # x = self.embedding(x) * math.sqrt(self.n_dim)
+        # x = x.long()
         x = x * math.sqrt(self.n_dim)
         x = self.positional_encoding(x)
         for block in self.encoder_blocks:
@@ -263,11 +267,10 @@ class Decoder(nn.Module):
         
         super(Decoder, self).__init__()
         
-        self.embedding = nn.Embedding(
-            num_embeddings=vocab_size, 
-            embedding_dim=n_dim,
-            padding_idx=0
-        )
+        # self.embedding = nn.Embedding(
+        #     num_embeddings=vocab_size, 
+        #     embedding_dim=n_dim,
+        # )
         self.positional_encoding = PositionalEncoding(
             d_model=n_dim, 
             dropout=dropout
@@ -279,8 +282,8 @@ class Decoder(nn.Module):
         
         
     def forward(self, tgt, memory, tgt_mask=None, tgt_padding_mask=None, memory_padding_mask=None):
-        x = self.embedding(tgt)
-        x = self.positional_encoding(x)
+        # x = self.embedding(tgt)
+        x = self.positional_encoding(tgt)
 
         for block in self.decoder_blocks:
             x = block(
@@ -296,9 +299,6 @@ def generate_square_subsequent_mask(size: int):
       mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
       return mask
 
-import torch
-import torch.nn as nn
-import math
 
 class Transformer(nn.Module):
     def __init__(self, **kwargs):
@@ -570,10 +570,12 @@ class Test_Model:
 
     def setup(self,train_v,eval_v):
         # Instantiate datasets
-        train_iter = ReverseDataset(train_v,50000, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
-        eval_iter = ReverseDataset(eval_v,10000, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
-        self.dataloader_train = DataLoader(train_iter, batch_size=2, collate_fn=collate_fn)
-        self.dataloader_val = DataLoader(eval_iter, batch_size=2, collate_fn=collate_fn)
+        # train_iter = ReverseDataset(train_v,100, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
+        # eval_iter = ReverseDataset(eval_v,100, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
+        train_iter = train_v
+        eval_iter = eval_v
+        self.dataloader_train = DataLoader(train_iter, batch_size=1)
+        self.dataloader_val = DataLoader(eval_iter, batch_size=1)
 
        
     
@@ -616,7 +618,7 @@ class Translator(nn.Module):
     
     def __call__(self, sentence, max_length=None, pad=False):
         
-        x = torch.tensor(sentence)
+        x = sentence
         #x = torch.cat([torch.tensor([SOS_IDX]), sentence, torch.tensor([EOS_IDX])]).unsqueeze(0)
         
         encoder_output, mask = self.transformer.encode(x) # (B, S, E)
@@ -624,13 +626,14 @@ class Translator(nn.Module):
             max_length = x.size(1)
             
         outputs = torch.ones((x.size()[0], max_length)).type_as(x).long() * SOS_IDX
-
+        
         for step in range(1, max_length):
             y = outputs[:, :step]
+
             probs = self.transformer.decode(y, encoder_output)
             output = torch.argmax(probs, dim=-1)
             print(f"Knowing {y} we output {output[:, -1]}")
-            if output[:, -1].detach().numpy() in (EOS_IDX, SOS_IDX):
+            if output[:, -1].cpu().detach().numpy() in (EOS_IDX, SOS_IDX):
                 break
             outputs[:, step] = output[:, -1]
             

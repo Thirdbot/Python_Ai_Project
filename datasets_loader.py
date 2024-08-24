@@ -217,17 +217,17 @@ class Datasets:
         
             rowcount += len(data[label])
 
-            q_encode = self.set_tokenizer.batch_encode_plus(list(data[label]),padding='longest',max_length=max_length,
+            q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding='longest',max_length=max_length,
                                                             truncation=True,add_special_tokens = True,
                                                             return_attention_mask = True, return_tensors='pt')
             
             q_inputs_tensor_id = q_encode['input_ids'].cuda()
             q_inputs_tensor_mask = q_encode['attention_mask'].cuda()
 
-            with torch.no_grad(): 
-                    q_outputs = self.model(q_inputs_tensor_id, attention_mask=q_inputs_tensor_mask)
+            # with torch.no_grad(): 
+            #         q_outputs = self.model(q_inputs_tensor_id, attention_mask=q_inputs_tensor_mask)
 
-            last_layer = q_outputs.last_hidden_state.squeeze().tolist()
+            # last_layer = q_outputs.last_hidden_state.squeeze().tolist()
             # q_embedding = {
             #      'input_ids': q_inputs_tensor_id.squeeze().cpu().numpy().tolist(),
             #      'attention_mask': q_inputs_tensor_mask.squeeze().cpu().numpy().tolist()
@@ -238,8 +238,8 @@ class Datasets:
             #     'embeddings':q_outputs.last_hidden_state.squeeze().cpu().numpy().tolist()
             # }
             
-            
-            embed_space['embeddings'].append(last_layer)
+            #encode 
+            embed_space['embeddings'].append(q_inputs_tensor_id.tolist())
             print(f"{save_name} {label} concatenated rows: {rowcount} ")
         return embed_space
         

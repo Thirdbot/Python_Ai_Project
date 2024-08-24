@@ -22,7 +22,7 @@ torch.set_default_device('cuda')
 class Transformers:
     def __init__(self) -> None:
         self.word_size = 100
-        self.hiddensize = 1000
+        self.hiddensize = 256
         self.ndim = 768
         self.lr = 0.000001
         #self.num_layers = 2 #bidirectional
@@ -84,7 +84,6 @@ class Transformers:
                 break
 
             embbed_sent = self.ListEmbeddings(sentence, self.word_size)
-            print(embbed_sent.shape)
             embbed_sent = embbed_sent.to("cuda")  # Ensure embeddings are on the correct device
 
             with torch.no_grad():
@@ -151,7 +150,7 @@ class Transformers:
                 self.model.optimizer.zero_grad()
                 zipdata2 = zip(input_loader,output_loader)
                 for list_inin,list_outout in zipdata2:
-
+                    print(list_inin.shape)
                     list_inin = list_inin.to("cuda", non_blocking=True)
                     list_outout = list_outout.to("cuda", non_blocking=True)
                     print("INPUT SHAPE: ",list_inin.shape)
