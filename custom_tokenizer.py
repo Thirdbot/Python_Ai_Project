@@ -39,14 +39,14 @@ class Tokenization:
         #using Bert to seperate in space and punctuation
         #tokenizer.pre_tokenizer = pre_tokenizers.BertPreTokenizer()
         #byte level seperation
-        tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
+        tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=True)
 
         #specials tokens defined
-        #special_tokens = ["[UNK]", "[PAD]", "[CLS]", "[SEP]", "[MASK]"]
+        special_tokens = ["[PAD]", "[CLS]","<|endoftext|>"]
         #set trainers with special token seperately
         #trainer = trainers.WordPieceTrainer(vocab_size=25000, special_tokens=special_tokens)
         #set trainers with one special tokens at the end
-        trainer = trainers.BpeTrainer(vocab_size=25000, special_tokens=["<|endoftext|>"])
+        trainer = trainers.BpeTrainer(vocab_size=25000, special_tokens=special_tokens)
         #get each batch sector from datasets to train tokenizer
 
         tokenizer.train_from_iterator(self.get_wiki_corpus(),trainer=trainer)
@@ -66,7 +66,7 @@ class Tokenization:
         # )
 
         #include whitespace in merging
-        tokenizer.post_processor = processors.ByteLevel(trim_offsets=False)
+        tokenizer.post_processor = processors.ByteLevel(trim_offsets=True)
 
 
         #set merge word

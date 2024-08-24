@@ -16,6 +16,7 @@ np.random.seed(0)
 PAD_IDX = 0
 SOS_IDX = 1
 EOS_IDX = 2
+
 class MultiHeadAttention(nn.Module):
     def __init__(self, hidden_dim=256, num_heads=4):
         """
@@ -581,11 +582,10 @@ class Test_Model:
         # Instantiate datasets
         train_iter = ReverseDataset(train_v,self.model.vocab_size, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
         eval_iter = ReverseDataset(eval_v,self.model.vocab_size, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
-
         # train_iter = train_v
         # eval_iter = eval_v
-        self.dataloader_train = DataLoader(train_iter, batch_size=4)
-        self.dataloader_val = DataLoader(eval_iter, batch_size=4)
+        self.dataloader_train = DataLoader(train_iter, batch_size=4,collate_fn=collate_fn)
+        self.dataloader_val = DataLoader(eval_iter, batch_size=4,collate_fn=collate_fn)
 
         
 

@@ -158,24 +158,26 @@ class Transformers:
 
         self.transformer.train()
        
+        
+        for epochs in tqdm(range(self.n_epochs),desc="Epoch:",leave=False):
 
-        for epochs in range(self.n_epochs):
             zipdata = zip(list_input,list_output)
+
             for list_in, list_out in zipdata:
                 
                 #batch data again
-                input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=4)
-                output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=4)
+                input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=0)
+                output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=0)
                 
                 self.model.optimizer.zero_grad()
 
                 zipdata2 = zip(input_loader,output_loader)
 
-                for list_inin,list_outout in zipdata2:
+                for list_inin,list_outout in tqdm(zipdata2,desc="Batch:",leave=False):
                     
                     list_inin = list_inin.to("cuda", non_blocking=True)
                     list_outout = list_outout.to("cuda", non_blocking=True)
-
+                    
                     self.model.run(list_inin,list_outout,epochs)
                     
                     

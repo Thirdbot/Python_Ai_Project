@@ -20,16 +20,14 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_default_device('cuda')
 
+
+
+
 class Program:
     def __init__(self) -> None:
         super(Program).__init__()
         
-        self.path = "tokenizer.json"
-        try:
-           os.path.isfile(self.path)
-        except:
-            Tokenization()
-            self.__init__()
+        
         
         self.datapath = "datasets"
         self.batch = 32 #batch size in this refer to bbatch in save files mean 32 batch for n times
@@ -46,17 +44,19 @@ class Program:
 
         self.inputs = None
         self.outputs = None
-        datasetss = Datasets()
+
+        
         if(self.CheckNeed(make_file=self.make_file)):
             ###now its time for fetching daatasets each>>>>
-            
+            datasetss = Datasets()
             couple_list = self.findcouple()
             count = 0
             model = Transformers()
             if (self.run_train):
                 for data_path in self.file_csv:
+                    print("Datasets: ",data_path)
                     for couple in couple_list[count]:
-
+                        print("couple: ",couple)
                         self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                         self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
                         #self.embedded(arr=self.inputs)
@@ -69,11 +69,11 @@ class Program:
                 output = model.test_input()
                 
         
-    def embedded(self,arr):
-        embed = nn.Embedding(100,128).to("cuda")
-        for a in arr:
-            out = embed(a)
-        print(out)
+    # def embedded(self,arr):
+    #     embed = nn.Embedding(100,128).to("cuda")
+    #     for a in arr:
+    #         out = embed(a)
+    #     print(out)
     
     def pad_array(self,arr, target_length, padding_value=0):
         sequence_lengths = []
@@ -246,4 +246,8 @@ class Program:
         return datasets_list
     
 if __name__ == "__main__":
+    path = "tokenizer.json"
+    if not (os.path.isfile(path)):
+        print("make token files.")
+        tokenization = Tokenization()
     Program()
