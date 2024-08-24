@@ -59,10 +59,10 @@ class Program:
 
                         self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                         self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
-                        self.embedded(arr=self.inputs)
+                        #self.embedded(arr=self.inputs)
                         
                         # print(f"run model: {couple}")
-                        #loss = model.runtrain(self.inputs,self.outputs)
+                        loss = model.runtrain(self.inputs,self.outputs)
 
                     count += 1
             if os.path.exists("model_checkpoint.pth"):
@@ -75,18 +75,17 @@ class Program:
             out = embed(a)
         print(out)
     
-    #for embeddings 
-    # def pad_array(self,arr, target_length, padding_value=0):
-    #     sequence_lengths = []
-    #     sequence_lengths.append(arr.shape[0])
-    #     padded_embeds = rnn_utils.pad_sequence(arr, batch_first=False, padding_value=padding_value).to("cuda")
-    #     if padded_embeds.shape[1] < target_length:
-    #         num_padding = target_length - padded_embeds.shape[1]
-    #         padding_tensors = torch.zeros((num_padding, padded_embeds.shape[0])).to("cuda")
-    #         padded_embeds = torch.cat([padded_embeds.transpose(0,1), padding_tensors], dim=0).to("cuda")
-    #         sequence_lengths.extend([0] * num_padding)
-    #     
-    #     return padded_embeds.transpose(0,1).to("cuda")
+    def pad_array(self,arr, target_length, padding_value=0):
+        sequence_lengths = []
+        sequence_lengths.append(arr.shape[0])
+        padded_embeds = rnn_utils.pad_sequence(arr, batch_first=False, padding_value=padding_value).to("cuda")
+        if padded_embeds.shape[1] < target_length:
+            num_padding = target_length - padded_embeds.shape[1]
+            padding_tensors = torch.zeros((num_padding, padded_embeds.shape[0])).to("cuda")
+            padded_embeds = torch.cat([padded_embeds.transpose(0,1), padding_tensors], dim=0).to("cuda")
+            sequence_lengths.extend([0] * num_padding)
+        
+        return padded_embeds.transpose(0,1).to("cuda")
     
     def pad_encode_array(self,arr, target_length, padding_value=0):
         sequence_lengths = []

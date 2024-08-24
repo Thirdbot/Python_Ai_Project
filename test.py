@@ -75,9 +75,9 @@ class MultiHeadAttention(nn.Module):
                 
         # Key mask here
         if key_padding_mask is not None:
-            key_padding_mask = torch.matmul(key_padding_mask.unsqueeze(0).reshape(1,self.num_heads,100,d_k),query.transpose(-2,-1))
-            key_padding_mask = key_padding_mask# Broadcast over batch size, num heads
-            print(logits.shape, key_padding_mask.shape)
+            # key_padding_mask = torch.matmul(key_padding_mask.unsqueeze(0).reshape(1,self.num_heads,100,d_k),query.transpose(-2,-1))
+            key_padding_mask = key_padding_mask.unsqueeze(0).unsqueeze(1)# Broadcast over batch size, num heads
+            # print(logits.shape, key_padding_mask.shape)
             logits = logits + key_padding_mask
             
         
@@ -202,10 +202,11 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         self.n_dim = n_dim
 
-        # self.embedding = nn.Embedding(
-        #     num_embeddings=vocab_size, 
-        #     embedding_dim=vocab_size,
-        # )
+        self.embedding = nn.Embedding(
+            num_embeddings=vocab_size, 
+            embedding_dim=n_dim,
+        )
+        
         self.positional_encoding = PositionalEncoding(
             d_model=n_dim, 
             dropout=dropout
@@ -216,8 +217,8 @@ class Encoder(nn.Module):
         
         
     def forward(self, x, padding_mask=None):
-        # x = x.long()
-        x = x * math.sqrt(self.n_dim)
+        x = x.long()
+        x = self.embedding(x) * math.sqrt(self.n_dim)
         x = self.positional_encoding(x)
         for block in self.encoder_blocks:
             x = block(x=x, src_padding_mask=padding_mask)
@@ -267,10 +268,10 @@ class Decoder(nn.Module):
         
         super(Decoder, self).__init__()
         
-        # self.embedding = nn.Embedding(
-        #     num_embeddings=vocab_size, 
-        #     embedding_dim=n_dim,
-        # )
+        self.embedding = nn.Embedding(
+            num_embeddings=vocab_size, 
+            embedding_dim=n_dim,
+        )
         self.positional_encoding = PositionalEncoding(
             d_model=n_dim, 
             dropout=dropout
@@ -282,8 +283,8 @@ class Decoder(nn.Module):
         
         
     def forward(self, tgt, memory, tgt_mask=None, tgt_padding_mask=None, memory_padding_mask=None):
-        # x = self.embedding(tgt)
-        x = self.positional_encoding(tgt)
+        x = self.embedding(tgt)
+        x = self.positional_encoding(x)
 
         for block in self.decoder_blocks:
             x = block(
@@ -574,8 +575,8 @@ class Test_Model:
         # eval_iter = ReverseDataset(eval_v,100, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
         train_iter = train_v
         eval_iter = eval_v
-        self.dataloader_train = DataLoader(train_iter, batch_size=1)
-        self.dataloader_val = DataLoader(eval_iter, batch_size=1)
+        self.dataloader_train = DataLoader(train_iter, batch_size=1,collate_fn=collate_fn)
+        self.dataloader_val = DataLoader(eval_iter, batch_size=1,collate_fn=collate_fn)
 
        
     
@@ -632,7 +633,7 @@ class Translator(nn.Module):
 
             probs = self.transformer.decode(y, encoder_output)
             output = torch.argmax(probs, dim=-1)
-            print(f"Knowing {y} we output {output[:, -1]}")
+            # print(f"Knowing {y} we output {output[:, -1]}")
             if output[:, -1].cpu().detach().numpy() in (EOS_IDX, SOS_IDX):
                 break
             outputs[:, step] = output[:, -1]

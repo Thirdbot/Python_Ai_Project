@@ -217,7 +217,7 @@ class Datasets:
         
             rowcount += len(data[label])
 
-            q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding='longest',max_length=max_length,
+            q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding='max_length',max_length=max_length,
                                                             truncation=True,add_special_tokens = True,
                                                             return_attention_mask = True, return_tensors='pt')
             
@@ -240,6 +240,7 @@ class Datasets:
             
             #encode 
             embed_space['embeddings'].append(q_inputs_tensor_id.tolist())
+            # embed_space['embeddings'].append(last_layer)
             print(f"{save_name} {label} concatenated rows: {rowcount} ")
         return embed_space
         

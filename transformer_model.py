@@ -77,7 +77,8 @@ class Transformers:
         file = "model_checkpoint.pth"
         self.transformer = self.load_model(file)
         self.transformer.eval()  # Set model to evaluation mode
-        
+        datasetss = Datasets()
+        empty = ''
         while True:
             sentence = input("You: ")
             if sentence.lower() == "quit":
@@ -89,7 +90,22 @@ class Transformers:
             with torch.no_grad():
                 # Assuming Translator is a method/function of the model
                 output = test.Translator(self.transformer)(embbed_sent, max_length=self.paddings)
-                print(output)
+        
+            empty.join(datasetss.decode(o) for o in output)
+            print("output: ",empty)
+
+            fig = plt.figure()
+            images = self.transformer.decoder.decoder_blocks[0].cross_attention.attention_weigths[0,...].cpu().detach().numpy().mean(axis=0)
+
+            fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+            ax.set_yticks(range(len(output)))
+            ax.set_xticks(range(len(sentence)))
+            ax.xaxis.set_label_position('top')
+            ax.set_xticklabels(list(sentence))
+            ax.set_yticklabels([f"step {i}" for i in range(len(output))])
+            ax.imshow(images, aspect='auto', cmap='viridis')  # Display the heatmap with a color map
+
+            plt.show()  # Ensure the plot is displayed
 
             
     def runtrain(self,inputs,outs):
@@ -102,17 +118,19 @@ class Transformers:
         sequence_lengths = []
 
         for input in list_input:
-            embed_input = datasets_Detail.set_tokenizer.encode_plus(input, padding='longest',truncation=True,add_special_tokens = True,return_attention_mask = True,max_length=word_size, return_tensors='pt')
+            embed_input = datasets_Detail.set_tokenizer.encode_plus(input, padding='max_length',truncation=True,add_special_tokens = True,return_attention_mask = True,max_length=word_size, return_tensors='pt')
             embedded_model = GPT2Model.from_pretrained('gpt2')
             tensor_id = embed_input['input_ids']
             tensor_mask = embed_input['attention_mask']
-            with torch.no_grad():
-                q_output = embedded_model(tensor_id,attention_mask=tensor_mask)
+            # with torch.no_grad():
+            #     q_output = embedded_model(tensor_id,attention_mask=tensor_mask)
             
-            embeds.append(q_output.last_hidden_state.squeeze(0))
-
-        sequence_lengths.append(q_output.last_hidden_state.size(1))
-        padded_embeds = rnn_utils.pad_sequence(embeds, batch_first=True, padding_value=0)
+            # embeds.append(q_output.last_hidden_state.squeeze(0))
+            # embeds.append(tensor_id.tolist())
+        # embeds = torch.stack(embeds)
+        # sequence_lengths.append(q_output.last_hidden_state.size(1))
+        sequence_lengths.append(tensor_id.shape[0])
+        padded_embeds = rnn_utils.pad_sequence(tensor_id, batch_first=False, padding_value=0)
         if len(padded_embeds) < self.paddings:
             num_padding = self.paddings - len(padded_embeds)
             padding_tensors = torch.zeros((num_padding, padded_embeds.size(1), padded_embeds.size(2)))
@@ -120,7 +138,7 @@ class Transformers:
             sequence_lengths.extend([0] * num_padding)
         else:
             padded_embeds = padded_embeds.transpose(0,1).to("cuda")
-        return padded_embeds.transpose(0,1)
+        return padded_embeds
 
 
 
