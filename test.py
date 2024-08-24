@@ -470,8 +470,9 @@ class ReverseDataset(Dataset):
         self.pad_idx = pad_idx
         self.sos_idx = sos_idx
         self.eos_idx = eos_idx
-        self.values = [ _ for _ in range(n_samples)]
-        self.labels = [self.text_transform(emb)[::-1] for x in self.values]
+        self.values = [ _ for _ in range(emb)]
+        self.labels = [self.text_transform(x) for x in self.values]
+        
 
     def __len__(self):
         return len(self.values)  # number of samples in the dataset
@@ -568,49 +569,36 @@ class Test_Model:
         # Define loss function : we ignore logits which are padding tokens
         self.loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001, betas=(0.9, 0.98), eps=1e-9)
-
-    def setup(self,train_v,eval_v):
-        # Instantiate datasets
-        # train_iter = ReverseDataset(train_v,100, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
-        # eval_iter = ReverseDataset(eval_v,100, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
-        train_iter = train_v
-        eval_iter = eval_v
-        self.dataloader_train = DataLoader(train_iter, batch_size=1,collate_fn=collate_fn)
-        self.dataloader_val = DataLoader(eval_iter, batch_size=1,collate_fn=collate_fn)
-
-       
-    
-    def run(self):
         # Save history to dictionnary
-        history = {
+        self.history = {
             'train_loss': [],
             'eval_loss': [],
             'train_acc': [],
             'eval_acc': []
         }
 
+    def run(self,train_v,eval_v,epoch):
+        # Instantiate datasets
+        train_iter = ReverseDataset(train_v,self.model.vocab_size, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
+        eval_iter = ReverseDataset(eval_v,self.model.vocab_size, pad_idx=PAD_IDX, sos_idx=SOS_IDX, eos_idx=EOS_IDX)
+
+        # train_iter = train_v
+        # eval_iter = eval_v
+        self.dataloader_train = DataLoader(train_iter, batch_size=4)
+        self.dataloader_val = DataLoader(eval_iter, batch_size=4)
+
+        
+
         # Main loop
-        for epoch in range(1, 2):
-            start_time = time.time()
-            train_loss, train_acc, hist_loss, hist_acc = train(self.model, self.optimizer, self.dataloader_train, self.loss_fn, epoch)
-            history['train_loss'] += hist_loss
-            history['train_acc'] += hist_acc
-            end_time = time.time()
-            val_loss, val_acc, hist_loss, hist_acc = evaluate(self.model, self.dataloader_val, self.loss_fn)
-            history['eval_loss'] += hist_loss
-            history['eval_acc'] += hist_acc
-            print((f"Epoch: {epoch}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s"))
-
-        fig = plt.figure(figsize=(10., 10.))
-        images = self.model.decoder.decoder_blocks[0].cross_attention.attention_weigths[0,...].detach().numpy()
-        grid = ImageGrid(fig, 111,  # similar to subplot(111)
-                        nrows_ncols=(2, 2),  # creates 2x2 grid of axes
-                        axes_pad=0.1,  # pad between axes in inch.
-                        )
-
-        for ax, im in zip(grid, images):
-            # Iterating over the grid returns the Axes.
-            ax.imshow(im)
+        start_time = time.time()
+        train_loss, train_acc, hist_loss, hist_acc = train(self.model, self.optimizer, self.dataloader_train, self.loss_fn, epoch)
+        self.history['train_loss'] += hist_loss
+        self.history['train_acc'] += hist_acc
+        end_time = time.time()
+        val_loss, val_acc, hist_loss, hist_acc = evaluate(self.model, self.dataloader_val, self.loss_fn)
+        self.history['eval_loss'] += hist_loss
+        self.history['eval_acc'] += hist_acc
+        print((f"Epoch: {epoch}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s"))
 
 class Translator(nn.Module):
     def __init__(self, transformer):

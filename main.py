@@ -33,7 +33,7 @@ class Program:
         
         self.datapath = "datasets"
         self.batch = 32 #batch size in this refer to bbatch in save files mean 32 batch for n times
-        self.pad_size = 100
+        self.pad_size = 200
 
         self.data_fetch = {'files':{}}
         self.run_train = True
@@ -77,14 +77,14 @@ class Program:
     
     def pad_array(self,arr, target_length, padding_value=0):
         sequence_lengths = []
-        sequence_lengths.append(arr.shape[0])
+        sequence_lengths.append(arr.shape[1])
         padded_embeds = rnn_utils.pad_sequence(arr, batch_first=False, padding_value=padding_value).to("cuda")
         if padded_embeds.shape[1] < target_length:
             num_padding = target_length - padded_embeds.shape[1]
-            padding_tensors = torch.zeros((num_padding, padded_embeds.shape[0])).to("cuda")
+            padding_tensors = torch.zeros((num_padding, padded_embeds.shape[1])).to("cuda")
             padded_embeds = torch.cat([padded_embeds.transpose(0,1), padding_tensors], dim=0).to("cuda")
             sequence_lengths.extend([0] * num_padding)
-        
+        padded_embeds = padded_embeds.transpose(0,1).to("cuda")
         return padded_embeds.transpose(0,1).to("cuda")
     
     def pad_encode_array(self,arr, target_length, padding_value=0):
@@ -94,10 +94,13 @@ class Program:
         padded_embeds = arr
         if padded_embeds.shape[0] < target_length:
             num_padding = target_length - padded_embeds.shape[0]
-            padding_tensors = torch.zeros((num_padding, padded_embeds.shape[0])).to("cuda")
-            padded_embeds = torch.cat([padded_embeds.transpose(-1,0), padding_tensors], dim=0).to("cuda")
-            sequence_lengths.extend([0] * num_padding)
 
+            padding_tensors = torch.zeros((num_padding, padded_embeds.shape[0])).to("cuda")
+
+            padded_embeds = torch.cat([padded_embeds.unsqueeze(0), padding_tensors], dim=0).to("cuda")
+            sequence_lengths.extend([0] * num_padding)
+            padded_embeds = padded_embeds.view(-1)  # Flatten to 1D tensor
+            padded_embeds = padded_embeds[:100]
         return padded_embeds.transpose(-1,0).to("cuda")
     
     

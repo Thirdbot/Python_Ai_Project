@@ -21,19 +21,18 @@ torch.set_default_device('cuda')
 
 class Transformers:
     def __init__(self) -> None:
-        self.word_size = 100
+        self.word_size = 200
         self.hiddensize = 256
         self.ndim = 768
         self.lr = 0.000001
         #self.num_layers = 2 #bidirectional
-        self.n_epochs = 10
+        self.n_epochs = 100
         self.batch = 16 #batch in this refer to batch for training
-        self.paddings = 100
 
         # self.train_inter = TrainInterference()
         
         self.args = {
-            'vocab_size': 100,
+            'vocab_size': 200,
             'model_dim': 768,
             'dropout': 0.1,
             'n_encoder_layers': 1,
@@ -89,7 +88,7 @@ class Transformers:
 
             with torch.no_grad():
                 # Assuming Translator is a method/function of the model
-                output = test.Translator(self.transformer)(embbed_sent, max_length=self.paddings)
+                output = test.Translator(self.transformer)(embbed_sent, max_length=self.word_size)
         
             empty.join(datasetss.decode(o) for o in output)
             print("output: ",empty)
@@ -98,13 +97,16 @@ class Transformers:
             images = self.transformer.decoder.decoder_blocks[0].cross_attention.attention_weigths[0,...].cpu().detach().numpy().mean(axis=0)
 
             fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+            
             ax.set_yticks(range(len(output)))
             ax.set_xticks(range(len(sentence)))
             ax.xaxis.set_label_position('top')
             ax.set_xticklabels(list(sentence))
             ax.set_yticklabels([f"step {i}" for i in range(len(output))])
-            ax.imshow(images, aspect='auto', cmap='viridis')  # Display the heatmap with a color map
-
+            images = np.clip(images, 0, 1)
+            # images = np.mean(images, axis=0)
+            cax = ax.imshow(images, aspect='auto', cmap='viridis')
+            fig.colorbar(cax)
             plt.show()  # Ensure the plot is displayed
 
             
@@ -131,8 +133,8 @@ class Transformers:
         # sequence_lengths.append(q_output.last_hidden_state.size(1))
         sequence_lengths.append(tensor_id.shape[0])
         padded_embeds = rnn_utils.pad_sequence(tensor_id, batch_first=False, padding_value=0)
-        if len(padded_embeds) < self.paddings:
-            num_padding = self.paddings - len(padded_embeds)
+        if len(padded_embeds) < self.word_size:
+            num_padding = self.word_size - len(padded_embeds)
             padding_tensors = torch.zeros((num_padding, padded_embeds.size(1), padded_embeds.size(2)))
             padded_embeds = torch.cat([padded_embeds, padding_tensors], dim=0)
             sequence_lengths.extend([0] * num_padding)
@@ -155,10 +157,10 @@ class Transformers:
         # ax.set_ylim(0, 1)  # Adjust based on expected loss values
 
         self.transformer.train()
-        zipdata = zip(list_input,list_output)
+       
 
-        for epochs in tqdm(range(self.n_epochs),leave=False):
-
+        for epochs in range(self.n_epochs):
+            zipdata = zip(list_input,list_output)
             for list_in, list_out in zipdata:
                 
                 #batch data again
@@ -166,16 +168,15 @@ class Transformers:
                 output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=4)
                 
                 self.model.optimizer.zero_grad()
+
                 zipdata2 = zip(input_loader,output_loader)
+
                 for list_inin,list_outout in zipdata2:
-                    print(list_inin.shape)
+                    
                     list_inin = list_inin.to("cuda", non_blocking=True)
                     list_outout = list_outout.to("cuda", non_blocking=True)
-                    print("INPUT SHAPE: ",list_inin.shape)
-                    print("OUTPUT SHAPE: ",list_outout.shape)
-                    
-                    self.model.setup(list_inin,list_outout)
-                    self.model.run()
+
+                    self.model.run(list_inin,list_outout,epochs)
                     
                     
             # plt.ioff()  # Turn off interactive mode

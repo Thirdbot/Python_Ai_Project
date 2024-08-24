@@ -217,7 +217,7 @@ class Datasets:
         
             rowcount += len(data[label])
 
-            q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding='max_length',max_length=max_length,
+            q_encode = self.set_tokenizer.batch_encode_plus(list(data[label]),padding='longest',max_length=max_length,
                                                             truncation=True,add_special_tokens = True,
                                                             return_attention_mask = True, return_tensors='pt')
             
