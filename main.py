@@ -46,7 +46,7 @@ class Program:
 
         self.inputs = None
         self.outputs = None
-
+        datasetss = Datasets()
         if(self.CheckNeed(make_file=self.make_file)):
             ###now its time for fetching daatasets each>>>>
             
@@ -121,7 +121,8 @@ class Program:
                     #padd_arr = self.pad_array(numpy_array,self.pad_size)
                     padd_arr = self.pad_encode_array(numpy_array,self.pad_size)
                     #saved.append(numpy_array)
-                    saved.append(padd_arr)
+                    #turn into int because encode not embeddings
+                    saved.append(padd_arr.to(dtype=int))
                 result = torch.stack(saved).to("cuda")
 
                 yield result.to("cuda")

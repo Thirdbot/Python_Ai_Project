@@ -90,7 +90,7 @@ class Transformers:
                 # Assuming Translator is a method/function of the model
                 output = test.Translator(self.transformer)(embbed_sent, max_length=self.word_size)
         
-            empty.join(datasetss.decode(o) for o in output)
+            empty.join(datasetss.decode([output]))
             print("output: ",empty)
 
             fig = plt.figure()

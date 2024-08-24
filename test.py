@@ -13,7 +13,9 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 
 np.random.seed(0)
 
-
+PAD_IDX = 0
+SOS_IDX = 1
+EOS_IDX = 2
 class MultiHeadAttention(nn.Module):
     def __init__(self, hidden_dim=256, num_heads=4):
         """
@@ -484,9 +486,7 @@ class ReverseDataset(Dataset):
     def text_transform(self, x):
         return torch.tensor([self.sos_idx] + x + [self.eos_idx])
 
-PAD_IDX = 0
-SOS_IDX = 1
-EOS_IDX = 2
+
 
 def train(model, optimizer, loader, loss_fn, epoch):
     model.train()
