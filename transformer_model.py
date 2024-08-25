@@ -72,7 +72,7 @@ class Transformers:
             'hiddensize': self.d_ff,
             'ndim': self.d_model,
         }, path)
-        print(f'Model saved to {path}')
+        #print(f'Model saved to {path}')
 
     # def test_input(self):
     #     file = "model_checkpoint.pth"
@@ -158,7 +158,7 @@ class Transformers:
         # src_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
         # tgt_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
         # datasetss = Datasets()
-        with tqdm(range(self.n_epochs), position=0, leave=True) as tepoch:
+        with tqdm(range(self.n_epochs), position=0, leave=False) as tepoch:
             for epochs in tepoch:
                 self.optimizer.zero_grad()
                 tepoch.set_description(f"Epoch {epochs}")
@@ -197,7 +197,7 @@ class Transformers:
                         masked_pred = preds * (list_outout[:, 1:]!=0)
                         accuracy = (masked_pred == list_outout[:, 1:]).float().mean()
                         acc += accuracy.item()
-                        
+
                         self.optimizer.step()
                         history_loss.append(loss.item())
                         history_acc.append(accuracy.item())
