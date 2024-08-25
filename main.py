@@ -31,7 +31,7 @@ class Program:
         
         self.datapath = "datasets"
         self.batch = 16 #batch size in this refer to bbatch in save files mean 32 batch for n times
-        self.pad_size = 25000
+        self.pad_size = 100
 
         self.data_fetch = {'files':{}}
         self.run_train = True
@@ -65,8 +65,8 @@ class Program:
                         #loss = model.runtrain(self.inputs,self.outputs)
 
                     count += 1
-            # if os.path.exists("model_checkpoint.pth"):
-            #     output = model.test_input()
+            if os.path.exists("model_checkpoint.pth"):
+                output = transformer_model.test_input()
                 
         
     # def embedded(self,arr):
@@ -100,7 +100,7 @@ class Program:
             padded_embeds = torch.cat([padded_embeds.unsqueeze(0), padding_tensors], dim=0).to("cuda")
             sequence_lengths.extend([0] * num_padding)
             padded_embeds = padded_embeds.view(-1)  # Flatten to 1D tensor
-            padded_embeds = padded_embeds[:100]
+            padded_embeds = padded_embeds[:target_length]
             # padded_embeds.transpose(-1,0).to("cuda")
     
         return padded_embeds

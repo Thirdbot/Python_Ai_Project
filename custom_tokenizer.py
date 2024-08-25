@@ -47,7 +47,7 @@ class Tokenization:
         #trainer = trainers.WordPieceTrainer(vocab_size=25000, special_tokens=special_tokens)
         
         #set trainers with one special tokens at the end
-        trainer = trainers.BpeTrainer(vocab_size=24999, special_tokens=special_tokens)
+        trainer = trainers.BpeTrainer(vocab_size=97, special_tokens=special_tokens)
         #get each batch sector from datasets to train tokenizer
 
         tokenizer.train_from_iterator(self.get_wiki_corpus(),trainer=trainer)
