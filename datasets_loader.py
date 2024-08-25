@@ -72,10 +72,11 @@ class Datasets:
             
             #name for easier naming
             name = os.path.splitext(data_path)[0]
-            train_corpus = self.get_train_corpus(split_datasets,batch)
-            test_corpus = self.get_test_corpus(split_datasets,batch)
+            
             #each feature in each train/test
             for columns in features:
+                train_corpus = self.get_train_corpus(split_datasets,batch)
+                test_corpus = self.get_test_corpus(split_datasets,batch)
                 #store_features = {columns:[]}
 
                 mem_col[data_path].append(columns)
@@ -135,6 +136,7 @@ class Datasets:
             
             #name for easier naming
             name = os.path.splitext(data_path)[0]
+            
             train_corpus = self.get_train_corpus(split_datasets,batch)
             test_corpus = self.get_test_corpus(split_datasets,batch)
             #each feature in each train/test
@@ -217,7 +219,7 @@ class Datasets:
         
             rowcount += len(data[label])
 
-            q_encode = self.set_tokenizer.batch_encode_plus(list(data[label]),padding='longest',max_length=max_length,
+            q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding='longest',max_length=max_length,
                                                             truncation=True,add_special_tokens = True,
                                                             return_attention_mask = True, return_tensors='pt')
             

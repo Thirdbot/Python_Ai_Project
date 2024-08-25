@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import torch.nn.utils.rnn as rnn_utils
 from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
-import test
 
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
@@ -21,97 +20,98 @@ torch.set_default_device('cuda')
 
 class Transformers:
     def __init__(self) -> None:
+        super().__init__()
         self.word_size = 200
         self.hiddensize = 256
         self.ndim = 768
         self.lr = 0.000001
         #self.num_layers = 2 #bidirectional
         self.n_epochs = 100
-        self.batch = 16 #batch in this refer to batch for training
+        self.batch = 4 #batch in this refer to batch for training
 
         # self.train_inter = TrainInterference()
         
-        self.args = {
-            'vocab_size': 200,
-            'model_dim': 768,
-            'dropout': 0.1,
-            'n_encoder_layers': 1,
-            'n_decoder_layers': 1,
-            'n_heads': 4
-        }
-        self.model = test.Test_Model(self.args)
-        self.transformer = self.model.model
+        # self.args = {
+        #     'vocab_size': 200,
+        #     'model_dim': 768,
+        #     'dropout': 0.1,
+        #     'n_encoder_layers': 1,
+        #     'n_decoder_layers': 1,
+        #     'n_heads': 4
+        # }
+        # self.model = test.Test_Model(self.args)
+        # self.transformer = self.model.model
 
 
     def load_model(self, path):
-        checkpoint = torch.load(path)
+        # checkpoint = torch.load(path)
         
-        # Load model state
-        self.transformer.load_state_dict(checkpoint['model_state'])
+        # # Load model state
+        # self.transformer.load_state_dict(checkpoint['model_state'])
         
-        # Optionally load optimizer state if available
-        if 'optimizer_state' in checkpoint:
-            self.model.optimizer.load_state_dict(checkpoint['optimizer_state'])
+        # # Optionally load optimizer state if available
+        # if 'optimizer_state' in checkpoint:
+        #     self.model.optimizer.load_state_dict(checkpoint['optimizer_state'])
         
-        # Update internal attributes
-        self.word_size = checkpoint.get('word_size', self.word_size)
-        self.hiddensize = checkpoint.get('hiddensize', self.hiddensize)
-        self.ndim = checkpoint.get('ndim', self.ndim)
+        # # Update internal attributes
+        # self.word_size = checkpoint.get('word_size', self.word_size)
+        # self.hiddensize = checkpoint.get('hiddensize', self.hiddensize)
+        # self.ndim = checkpoint.get('ndim', self.ndim)
         
-        print(f'Model loaded from {path}')
+        # print(f'Model loaded from {path}')
         return self.transformer
 
     def save_model(self, path):
-        # Save model state
-        torch.save({
-            'model_state': self.transformer.state_dict(),
-            'optimizer_state': self.model.optimizer.state_dict() if hasattr(self.model, 'optimizer') else None,
-            'word_size': self.word_size,
-            'hiddensize': self.hiddensize,
-            'ndim': self.ndim,
-        }, path)
+        # # Save model state
+        # torch.save({
+        #     'model_state': self.transformer.state_dict(),
+        #     'optimizer_state': self.model.optimizer.state_dict() if hasattr(self.model, 'optimizer') else None,
+        #     'word_size': self.word_size,
+        #     'hiddensize': self.hiddensize,
+        #     'ndim': self.ndim,
+        # }, path)
         print(f'Model saved to {path}')
 
-    def test_input(self):
-        file = "model_checkpoint.pth"
-        self.transformer = self.load_model(file)
-        self.transformer.eval()  # Set model to evaluation mode
-        datasetss = Datasets()
-        empty = ''
-        while True:
-            sentence = input("You: ")
-            if sentence.lower() == "quit":
-                break
+    # def test_input(self):
+    #     file = "model_checkpoint.pth"
+    #     self.transformer = self.load_model(file)
+    #     self.transformer.eval()  # Set model to evaluation mode
+    #     datasetss = Datasets()
+    #     empty = ''
+    #     while True:
+    #         sentence = input("You: ")
+    #         if sentence.lower() == "quit":
+    #             break
 
-            embbed_sent = self.ListEmbeddings(sentence, self.word_size)
-            embbed_sent = embbed_sent.to("cuda")  # Ensure embeddings are on the correct device
+    #         embbed_sent = self.ListEmbeddings(sentence, self.word_size)
+    #         embbed_sent = embbed_sent.to("cuda")  # Ensure embeddings are on the correct device
 
-            with torch.no_grad():
-                # Assuming Translator is a method/function of the model
-                output = test.Translator(self.transformer)(embbed_sent, max_length=self.word_size)
+    #         with torch.no_grad():
+    #             # Assuming Translator is a method/function of the model
+    #             output = test.Translator(self.transformer)(embbed_sent, max_length=self.word_size)
         
-            empty.join(datasetss.decode([output]))
-            print("output: ",empty)
+    #         empty.join(datasetss.decode([output]))
+    #         print("output: ",empty)
 
-            fig = plt.figure()
-            images = self.transformer.decoder.decoder_blocks[0].cross_attention.attention_weigths[0,...].cpu().detach().numpy().mean(axis=0)
+    #         fig = plt.figure()
+    #         images = self.transformer.decoder.decoder_blocks[0].cross_attention.attention_weigths[0,...].cpu().detach().numpy().mean(axis=0)
 
-            fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+    #         fig, ax = plt.subplots(1, 1, figsize=(10, 10))
             
-            ax.set_yticks(range(len(output)))
-            ax.set_xticks(range(len(sentence)))
-            ax.xaxis.set_label_position('top')
-            ax.set_xticklabels(list(sentence))
-            ax.set_yticklabels([f"step {i}" for i in range(len(output))])
-            images = np.clip(images, 0, 1)
-            # images = np.mean(images, axis=0)
-            cax = ax.imshow(images, aspect='auto', cmap='viridis')
-            fig.colorbar(cax)
-            plt.show()  # Ensure the plot is displayed
+    #         ax.set_yticks(range(len(output)))
+    #         ax.set_xticks(range(len(sentence)))
+    #         ax.xaxis.set_label_position('top')
+    #         ax.set_xticklabels(list(sentence))
+    #         ax.set_yticklabels([f"step {i}" for i in range(len(output))])
+    #         images = np.clip(images, 0, 1)
+    #         # images = np.mean(images, axis=0)
+    #         cax = ax.imshow(images, aspect='auto', cmap='viridis')
+    #         fig.colorbar(cax)
+    #         plt.show()  # Ensure the plot is displayed
 
             
     def runtrain(self,inputs,outs):
-        loss = self.feedmodel(inputs,outs,hiddensize=self.hiddensize,ndim=self.ndim)
+        loss = self.feedmodel(inputs,outs)
         return loss
 
     def ListEmbeddings(self,list_input,word_size):
@@ -145,48 +145,44 @@ class Transformers:
 
 
     
-    def feedmodel(self,list_input,list_output,hiddensize,ndim):
-
-        # #dynamic plot
-        # plt.ion()
-        # fig, ax = plt.subplots()
-        # ax.set_xlabel('Epoch')
-        # ax.set_ylabel('Loss')
-        # line, = ax.plot([], [], 'r-')
-        # ax.set_xlim(0, self.n_epochs)
-        # ax.set_ylim(0, 1)  # Adjust based on expected loss values
-
-        self.transformer.train()
-
-        for epochs in tqdm(range(self.n_epochs),desc="Epoch:",leave=False):
-
-            zipdata = zip(list_input,list_output)
-
-            for list_in, list_out in zipdata:
-                
+    def feedmodel(self,list_input,list_output):
+        # datasetss = Datasets()
+        for epochs in range(self.n_epochs):
+            
+            size = 0
+            for (list_in,list_out) in zip(list_input,list_output):
+                # print(f"list_in size: {len(list_in)} list_out size: {len(list_out)}")
                 #batch data again
+
                 input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=0)
                 output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=0)
                 
                 # self.model.optimizer.zero_grad()
-
-                zipdata2 = zip(input_loader,output_loader)
-
-                for list_inin,list_outout in tqdm(zipdata2,desc="Batch:",leave=False):
-                    
+                
+                for list_inin, list_outout in zip(input_loader,output_loader):
+                    # print(f"\tlist_inin size: {len(list_inin)} list_outout size: {len(list_outout)}")
                     list_inin = list_inin.to("cuda", non_blocking=True)
                     list_outout = list_outout.to("cuda", non_blocking=True)
                     
-                    self.model.run(list_inin,list_outout,epochs)
+
+
+                    # qdecode = datasetss.decode(list_inin)
+                    # adecode = datasetss.decode(list_outout)
+                    # print(f"Question: {qdecode}\nAnswer{adecode}")
+                    
+                #     size += len(list_inin)
+                # print(f"batch done total size {size}")
+            
                     
                     
-            # plt.ioff()  # Turn off interactive mode
-            # plt.close()
+                    
+                    
+                    
 
-        model_save_path = "model_checkpoint.pth"
-        self.save_model(model_save_path)
+        # model_save_path = "model_checkpoint.pth"
+        # self.save_model(model_save_path)
 
-
+###validation goes here back prob goes heere
 
 if __name__ == "__main__":
     transformers = Transformers()

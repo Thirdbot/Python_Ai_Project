@@ -23,7 +23,7 @@
     },
     {
       "id": 2,
-      "content": "<|endoftext|>",
+      "content": "[SEP]",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
@@ -74,7 +74,7 @@
     "vocab": {
       "[PAD]": 0,
       "[CLS]": 1,
-      "<|endoftext|>": 2,
+      "[SEP]": 2,
       "!": 3,
       "\"": 4,
       "#": 5,

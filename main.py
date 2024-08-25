@@ -4,17 +4,17 @@ import os
 from datasets_loader import *
 from custom_tokenizer import *
 
-from tokenizers import Tokenizer
-from transformers import PreTrainedTokenizerFast
-from transformers import GPT2TokenizerFast
+# from tokenizers import Tokenizer
+# from transformers import PreTrainedTokenizerFast
+# from transformers import GPT2TokenizerFast
 import torch
-from transformer_model import *
+from transformer_model import Transformers
+import torch.nn.utils.rnn as rnn_utils
 import pandas as pd
 import pyarrow.parquet as pq
 import dask.dataframe as dd
 import dask.array as da
 import fastparquet as fp
-import test
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -30,8 +30,8 @@ class Program:
         
         
         self.datapath = "datasets"
-        self.batch = 32 #batch size in this refer to bbatch in save files mean 32 batch for n times
-        self.pad_size = 200
+        self.batch = 16 #batch size in this refer to bbatch in save files mean 32 batch for n times
+        self.pad_size = 100
 
         self.data_fetch = {'files':{}}
         self.run_train = True
@@ -42,16 +42,14 @@ class Program:
         #recommend turn to False just to re embeddings it each time(faster than fetch through .json file)
         self.make_file = True
 
-        self.inputs = None
-        self.outputs = None
 
         
         if(self.CheckNeed(make_file=self.make_file)):
             ###now its time for fetching daatasets each>>>>
-            datasetss = Datasets()
+            # datasetss = Datasets()
             couple_list = self.findcouple()
             count = 0
-            model = Transformers()
+            transformer_model = Transformers()
             if (self.run_train):
                 for data_path in self.file_csv:
                     print("Datasets: ",data_path)
@@ -59,14 +57,16 @@ class Program:
                         print("couple: ",couple)
                         self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                         self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
+                        
+                        transformer_model.runtrain(self.inputs,self.outputs)
                         #self.embedded(arr=self.inputs)
-                    
+                        
                         # print(f"run model: {couple}")
-                        loss = model.runtrain(self.inputs,self.outputs)
+                        #loss = model.runtrain(self.inputs,self.outputs)
 
                     count += 1
-            if os.path.exists("model_checkpoint.pth"):
-                output = model.test_input()
+            # if os.path.exists("model_checkpoint.pth"):
+            #     output = model.test_input()
                 
         
     # def embedded(self,arr):
@@ -108,6 +108,7 @@ class Program:
     #it work
     def soupDatasets(self,data_path,label,type,make_file):
         saved = []
+        batch = []
         #Both of these need to change
         if make_file:
             make_path = f"datasets/{data_path}_embeddings.feather"
@@ -123,16 +124,19 @@ class Program:
                     #padding
                     #padd_arr = self.pad_encode_array(numpy_array,self.pad_size)
                     #no padding
-                    saved.append(numpy_array)
+                    batch.append(numpy_array)
                     #turn into int because encode not embeddings
                     #saved.append(padd_arr.to(dtype=int))
                 #result = torch.stack(saved).to("cuda")
-                yield saved
+                
+                #saved.append(batch)
+                # batch = []
+                yield batch
+                batch = []
                 #yield result.to("cuda")
                 #yield torch.tensor(np.array(stuff),dtype=torch.long)
             
-            
-        
+
         else:
             make_path = f"datasets/{data_path}.csv"
             embedd_file = self.data_fetch['files'][make_path]

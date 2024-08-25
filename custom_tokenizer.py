@@ -42,7 +42,7 @@ class Tokenization:
         tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=True)
 
         #specials tokens defined
-        special_tokens = ["[PAD]", "[CLS]","<|endoftext|>"]
+        special_tokens = ["[PAD]", "[CLS]","[SEP]"]
         #set trainers with special token seperately
         #trainer = trainers.WordPieceTrainer(vocab_size=25000, special_tokens=special_tokens)
         #set trainers with one special tokens at the end
@@ -64,9 +64,22 @@ class Tokenization:
         #     pair=f"[CLS]:0 $A:0 [SEP]:0 $B:1 [SEP]:1",
         #     special_tokens=[("[CLS]", cls_token_id), ("[SEP]", sep_token_id)],
         # )
+        cls_token_id = tokenizer.token_to_id("[CLS]")
+        sep_token_id = tokenizer.token_to_id("[SEP]")
+        pad_token_id = tokenizer.token_to_id("[PAD]")
+
+        tokenizer.post_processor = processors.TemplateProcessing(
+            single=f"[CLS]:0 $A:0 [SEP]:0",
+            pair=f"[CLS]:0 $A:0 [SEP]:0 $B:1 [SEP]:1",
+            special_tokens=[
+                ("[CLS]", cls_token_id), 
+                ("[SEP]", sep_token_id),
+                ("[PAD]", pad_token_id)
+            ],
+        )
 
         #include whitespace in merging
-        tokenizer.post_processor = processors.ByteLevel(trim_offsets=True)
+        tokenizer.post_processor = processors.ByteLevel()
 
 
         #set merge word
