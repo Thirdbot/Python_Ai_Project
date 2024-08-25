@@ -31,7 +31,7 @@ class Program:
         
         self.datapath = "datasets"
         self.batch = 16 #batch size in this refer to bbatch in save files mean 32 batch for n times
-        self.pad_size = 100
+        self.pad_size = 25000
 
         self.data_fetch = {'files':{}}
         self.run_train = True
@@ -84,7 +84,7 @@ class Program:
             padding_tensors = torch.zeros((num_padding, padded_embeds.shape[1])).to("cuda")
             padded_embeds = torch.cat([padded_embeds.transpose(0,1), padding_tensors], dim=0).to("cuda")
             sequence_lengths.extend([0] * num_padding)
-        padded_embeds = padded_embeds.transpose(0,1).to("cuda")
+        # padded_embeds = padded_embeds.transpose(0,1).to("cuda")
         return padded_embeds.transpose(0,1).to("cuda")
     
     def pad_encode_array(self,arr, target_length, padding_value=0):
@@ -101,8 +101,9 @@ class Program:
             sequence_lengths.extend([0] * num_padding)
             padded_embeds = padded_embeds.view(-1)  # Flatten to 1D tensor
             padded_embeds = padded_embeds[:100]
-        return padded_embeds.transpose(-1,0).to("cuda")
+            # padded_embeds.transpose(-1,0).to("cuda")
     
+        return padded_embeds
     
 
     #it work
@@ -122,19 +123,19 @@ class Program:
                     #padd_arr = self.pad_array(numpy_array,self.pad_size)
 
                     #padding
-                    #padd_arr = self.pad_encode_array(numpy_array,self.pad_size)
+                    padd_arr = self.pad_encode_array(numpy_array,self.pad_size)
+
                     #no padding
-                    batch.append(numpy_array)
+                    #batch.append(numpy_array)
+
                     #turn into int because encode not embeddings
-                    #saved.append(padd_arr.to(dtype=int))
-                #result = torch.stack(saved).to("cuda")
+                    batch.append(padd_arr.to(dtype=int))
+                    result = torch.stack(batch).to("cuda")
                 
                 #saved.append(batch)
-                # batch = []
-                yield batch
+                #yield saved
+                yield result
                 batch = []
-                #yield result.to("cuda")
-                #yield torch.tensor(np.array(stuff),dtype=torch.long)
             
 
         else:

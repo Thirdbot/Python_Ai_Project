@@ -45,8 +45,9 @@ class Tokenization:
         special_tokens = ["[PAD]", "[CLS]","[SEP]"]
         #set trainers with special token seperately
         #trainer = trainers.WordPieceTrainer(vocab_size=25000, special_tokens=special_tokens)
+        
         #set trainers with one special tokens at the end
-        trainer = trainers.BpeTrainer(vocab_size=25000, special_tokens=special_tokens)
+        trainer = trainers.BpeTrainer(vocab_size=24999, special_tokens=special_tokens)
         #get each batch sector from datasets to train tokenizer
 
         tokenizer.train_from_iterator(self.get_wiki_corpus(),trainer=trainer)
@@ -77,9 +78,8 @@ class Tokenization:
                 ("[PAD]", pad_token_id)
             ],
         )
-
         #include whitespace in merging
-        tokenizer.post_processor = processors.ByteLevel()
+        # tokenizer.post_processor = processors.ByteLevel(trim_offsets=True)
 
 
         #set merge word

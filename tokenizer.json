@@ -52,10 +52,88 @@
     "use_regex": true
   },
   "post_processor": {
-    "type": "ByteLevel",
-    "add_prefix_space": true,
-    "trim_offsets": true,
-    "use_regex": true
+    "type": "TemplateProcessing",
+    "single": [
+      {
+        "SpecialToken": {
+          "id": "[CLS]",
+          "type_id": 0
+        }
+      },
+      {
+        "Sequence": {
+          "id": "A",
+          "type_id": 0
+        }
+      },
+      {
+        "SpecialToken": {
+          "id": "[SEP]",
+          "type_id": 0
+        }
+      }
+    ],
+    "pair": [
+      {
+        "SpecialToken": {
+          "id": "[CLS]",
+          "type_id": 0
+        }
+      },
+      {
+        "Sequence": {
+          "id": "A",
+          "type_id": 0
+        }
+      },
+      {
+        "SpecialToken": {
+          "id": "[SEP]",
+          "type_id": 0
+        }
+      },
+      {
+        "Sequence": {
+          "id": "B",
+          "type_id": 1
+        }
+      },
+      {
+        "SpecialToken": {
+          "id": "[SEP]",
+          "type_id": 1
+        }
+      }
+    ],
+    "special_tokens": {
+      "[CLS]": {
+        "id": "[CLS]",
+        "ids": [
+          1
+        ],
+        "tokens": [
+          "[CLS]"
+        ]
+      },
+      "[PAD]": {
+        "id": "[PAD]",
+        "ids": [
+          0
+        ],
+        "tokens": [
+          "[PAD]"
+        ]
+      },
+      "[SEP]": {
+        "id": "[SEP]",
+        "ids": [
+          2
+        ],
+        "tokens": [
+          "[SEP]"
+        ]
+      }
+    }
   },
   "decoder": {
     "type": "ByteLevel",
@@ -25070,8 +25148,7 @@
       "Ġsealy": 24995,
       "Ġseville": 24996,
       "Ġsealing": 24997,
-      "Ġkp": 24998,
-      "Ġkish": 24999
+      "Ġkp": 24998
     },
     "merges": [
       "Ġ t",
@@ -49910,8 +49987,7 @@
       "Ġse aly",
       "Ġse ville",
       "Ġse aling",
-      "Ġk p",
-      "Ġk ish"
+      "Ġk p"
     ]
   }
 }

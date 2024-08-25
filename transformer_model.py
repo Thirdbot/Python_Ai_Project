@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import torch.nn.utils.rnn as rnn_utils
 from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
-
+from transformer_core import Transformer
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 torch.set_default_device('cuda')
@@ -21,55 +21,57 @@ torch.set_default_device('cuda')
 class Transformers:
     def __init__(self) -> None:
         super().__init__()
-        self.word_size = 200
-        self.hiddensize = 256
-        self.ndim = 768
-        self.lr = 0.000001
+        #its an attention of srcand tgt size that interpret so word_size need to be same as vocabb_size
+        self.src_vocab_size = 25000
+        self.tgt_vocab_size = 25000
+        self.d_model = 512
+        self.num_heads = 8
+        self.num_layers = 6
+        self.d_ff = 2048
+        # max_seq_length = 100
+        self.dropout = 0.1
+
+        self.word_size = 25000
+        # self.hiddensize = 256
+        # self.ndim = 768
+        # self.lr = 0.000001
         #self.num_layers = 2 #bidirectional
         self.n_epochs = 100
         self.batch = 4 #batch in this refer to batch for training
 
-        # self.train_inter = TrainInterference()
+        self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
+        self.criterion = nn.CrossEntropyLoss(ignore_index=0)
+        self.optimizer = torch.optim.Adam(self.transformer.parameters(), lr=0.0001, betas=(0.9, 0.98), eps=1e-9)
         
-        # self.args = {
-        #     'vocab_size': 200,
-        #     'model_dim': 768,
-        #     'dropout': 0.1,
-        #     'n_encoder_layers': 1,
-        #     'n_decoder_layers': 1,
-        #     'n_heads': 4
-        # }
-        # self.model = test.Test_Model(self.args)
-        # self.transformer = self.model.model
 
 
     def load_model(self, path):
-        # checkpoint = torch.load(path)
+        checkpoint = torch.load(path)
         
-        # # Load model state
-        # self.transformer.load_state_dict(checkpoint['model_state'])
+        # Load model state
+        self.transformer.load_state_dict(checkpoint['model_state'])
         
-        # # Optionally load optimizer state if available
-        # if 'optimizer_state' in checkpoint:
-        #     self.model.optimizer.load_state_dict(checkpoint['optimizer_state'])
+        # Optionally load optimizer state if available
+        if 'optimizer_state' in checkpoint:
+            self.optimizer.load_state_dict(checkpoint['optimizer_state'])
         
-        # # Update internal attributes
-        # self.word_size = checkpoint.get('word_size', self.word_size)
-        # self.hiddensize = checkpoint.get('hiddensize', self.hiddensize)
-        # self.ndim = checkpoint.get('ndim', self.ndim)
+        # Update internal attributes
+        self.word_size = checkpoint.get('word_size', self.word_size)
+        self.d_ff = checkpoint.get('hiddensize', self.hiddensize)
+        self.d_model = checkpoint.get('ndim', self.ndim)
         
-        # print(f'Model loaded from {path}')
+        print(f'Model loaded from {path}')
         return self.transformer
 
     def save_model(self, path):
-        # # Save model state
-        # torch.save({
-        #     'model_state': self.transformer.state_dict(),
-        #     'optimizer_state': self.model.optimizer.state_dict() if hasattr(self.model, 'optimizer') else None,
-        #     'word_size': self.word_size,
-        #     'hiddensize': self.hiddensize,
-        #     'ndim': self.ndim,
-        # }, path)
+        # Save model state
+        torch.save({
+            'model_state': self.transformer.state_dict(),
+            'optimizer_state': self.optimizer.state_dict() if hasattr(self.transformer, 'optimizer') else None,
+            'word_size': self.word_size,
+            'hiddensize': self.d_ff,
+            'ndim': self.d_model,
+        }, path)
         print(f'Model saved to {path}')
 
     # def test_input(self):
@@ -146,29 +148,65 @@ class Transformers:
 
     
     def feedmodel(self,list_input,list_output):
+        
+       
+        self.transformer.train()
+        losses = 0
+        acc = 0
+        history_loss = []
+        history_acc = [] 
+        # src_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
+        # tgt_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
         # datasetss = Datasets()
-        for epochs in range(self.n_epochs):
+        with tqdm(range(self.n_epochs), position=0, leave=True) as tepoch:
+            for epochs in tepoch:
+                self.optimizer.zero_grad()
+                tepoch.set_description(f"Epoch {epochs}")
+                 #for epochs in tqdm(range(self.n_epochs),desc="EPOCHS:",leave=False):
             
-            size = 0
-            for (list_in,list_out) in zip(list_input,list_output):
-                # print(f"list_in size: {len(list_in)} list_out size: {len(list_out)}")
-                #batch data again
+                # size = 0
+                for (list_in,list_out) in tqdm(zip(list_input,list_output),desc="BATCHES:",leave=False):
+                    # print(f"list_in size: {len(list_in)} list_out size: {len(list_out)}")
+                    #batch data again
 
-                input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=0)
-                output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=0)
-                
-                # self.model.optimizer.zero_grad()
-                
-                for list_inin, list_outout in zip(input_loader,output_loader):
-                    # print(f"\tlist_inin size: {len(list_inin)} list_outout size: {len(list_outout)}")
-                    list_inin = list_inin.to("cuda", non_blocking=True)
-                    list_outout = list_outout.to("cuda", non_blocking=True)
+                    input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=0)
+                    output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=0)
                     
+                    # self.model.optimizer.zero_grad()
+                    
+                    for list_inin, list_outout in zip(input_loader,output_loader):
+                        
+                        
+                        list_inin = list_inin.to("cuda")
+                        list_outout = list_outout.to("cuda")
+                        # print(f"\tlist_inin size: {list_inin.shape} list_outout size: {list_outout.shape}")
+                        # print(list_inin,list_outout)
+                        # print(src_data,tgt_data)
+                        # qdecode = datasetss.decode(list_inin)
+                        # adecode = datasetss.decode(list_outout)
+                        # print(f"Question: {qdecode}\nAnswer{adecode}")
+                        output = self.transformer(list_inin, list_outout[:,:-1])
+
+                       
+                        
+                        # loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
+                        loss = self.criterion(output.contiguous().view(-1, self.word_size), list_outout[:, 1:].contiguous().view(-1))
+                        loss.backward()
+                        losses += loss.item()
+                        preds = output.argmax(dim=-1)
+                        masked_pred = preds * (list_outout[:, 1:]!=0)
+                        accuracy = (masked_pred == list_outout[:, 1:]).float().mean()
+                        acc += accuracy.item()
+                        
+                        self.optimizer.step()
+                        history_loss.append(loss.item())
+                        history_acc.append(accuracy.item())
+                        tepoch.set_postfix(loss=loss.item(), accuracy=100. * accuracy.item())
+                        #print(f"Epoch: {epochs+1}, Loss: {loss.item()}")
+                model_save_path = "model_checkpoint.pth"
+                self.save_model(model_save_path) 
 
 
-                    # qdecode = datasetss.decode(list_inin)
-                    # adecode = datasetss.decode(list_outout)
-                    # print(f"Question: {qdecode}\nAnswer{adecode}")
                     
                 #     size += len(list_inin)
                 # print(f"batch done total size {size}")
@@ -179,8 +217,7 @@ class Transformers:
                     
                     
 
-        # model_save_path = "model_checkpoint.pth"
-        # self.save_model(model_save_path)
+        
 
 ###validation goes here back prob goes heere
 

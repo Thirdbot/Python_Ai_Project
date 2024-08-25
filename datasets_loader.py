@@ -136,7 +136,7 @@ class Datasets:
             
             #name for easier naming
             name = os.path.splitext(data_path)[0]
-            
+
             train_corpus = self.get_train_corpus(split_datasets,batch)
             test_corpus = self.get_test_corpus(split_datasets,batch)
             #each feature in each train/test
