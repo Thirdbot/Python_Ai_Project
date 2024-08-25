@@ -30,11 +30,11 @@ class Transformers:
         self.d_ff = 2048
         # max_seq_length = 100
         self.dropout = 0.01
-        self.lr = 0.0000001
+        self.lr = 0.00001
         self.word_size = 52000
         
         self.n_epochs = 100
-        self.batch = 8 #batch in this refer to batch for training
+        self.batch = 1 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         self.criterion = nn.CrossEntropyLoss(ignore_index=0)
@@ -87,13 +87,12 @@ class Transformers:
             print(embbed_sent)
             embbed_sent = embbed_sent.to("cuda")  # Ensure embeddings are on the correct device
             print(embbed_sent.shape)
-            # Initialize the tgt_data with start tokens, like [CLS] or any start token you used during training
-           
+            # Initialize the tgt_data with start tokens, like    [CLS] or any start token you used during training
+            tgt_data = torch.full((embbed_sent.shape[0], 1), 1, dtype=torch.long).to("cuda")
             for i in range(1, 100):  # Assuming max length 100
-                tgt_data = torch.full((embbed_sent.shape[0], 1), 1, dtype=torch.long).to("cuda")
-
+                
                 with torch.no_grad():
-                    output = self.transformer(embbed_sent, embbed_sent)
+                    output = self.transformer(embbed_sent, tgt_data)
                 
                 # Get the most likely next token
                 next_token = output[:, -1, :].argmax(dim=-1, keepdim=True)
