@@ -31,7 +31,7 @@ class Transformers:
         # max_seq_length = 100
         self.dropout = 0.01
         self.lr = 0.0000001
-        self.word_size = 200
+        self.word_size = 52000
         
         self.n_epochs = 100
         self.batch = 8 #batch in this refer to batch for training
@@ -102,7 +102,7 @@ class Transformers:
                 tgt_data = torch.cat((tgt_data, next_token), dim=1)
                 
                 # Stop if the model predicts the end token
-                if next_token.item() == 162:
+                if next_token.item() == 0:
                     break
 
             # Decode the generated sequence
@@ -197,7 +197,7 @@ class Transformers:
                         loss.backward()
                         losses += loss.item()
                         preds = output.argmax(dim=-1)
-                        masked_pred = preds * (list_outout[:, 1:]!=2)
+                        masked_pred = preds * (list_outout[:, 1:]!=0)
                         accuracy = (masked_pred == list_outout[:, 1:]).float().mean()
                         acc += accuracy.item()
 
