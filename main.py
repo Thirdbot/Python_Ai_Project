@@ -60,7 +60,7 @@ class Program:
                         self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                         self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
                         #self.embedded(arr=self.inputs)
-                        
+                    
                         # print(f"run model: {couple}")
                         loss = model.runtrain(self.inputs,self.outputs)
 
@@ -119,13 +119,16 @@ class Program:
                 for row in stuff:
                     numpy_array =torch.stack([torch.tensor(np.array(obj),dtype=torch.long).to("cuda") for obj in row])
                     #padd_arr = self.pad_array(numpy_array,self.pad_size)
-                    padd_arr = self.pad_encode_array(numpy_array,self.pad_size)
-                    #saved.append(numpy_array)
-                    #turn into int because encode not embeddings
-                    saved.append(padd_arr.to(dtype=int))
-                result = torch.stack(saved).to("cuda")
 
-                yield result.to("cuda")
+                    #padding
+                    #padd_arr = self.pad_encode_array(numpy_array,self.pad_size)
+                    #no padding
+                    saved.append(numpy_array)
+                    #turn into int because encode not embeddings
+                    #saved.append(padd_arr.to(dtype=int))
+                #result = torch.stack(saved).to("cuda")
+                yield saved
+                #yield result.to("cuda")
                 #yield torch.tensor(np.array(stuff),dtype=torch.long)
             
             

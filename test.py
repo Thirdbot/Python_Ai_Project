@@ -496,7 +496,7 @@ def train(model, optimizer, loader, loss_fn, epoch):
     history_loss = []
     history_acc = [] 
 
-    with tqdm(loader, position=0, leave=True) as tepoch:
+    with tqdm(loader, position=0, leave=False) as tepoch:
         for x, y in tepoch:
             tepoch.set_description(f"Epoch {epoch}")
 
@@ -526,7 +526,7 @@ def evaluate(model, loader, loss_fn):
     history_loss = []
     history_acc = [] 
 
-    for x, y in tqdm(loader, position=0, leave=True):
+    for x, y in tqdm(loader, position=0, leave=False):
 
         logits = model(x, y[:, :-1])
         loss = loss_fn(logits.contiguous().view(-1, model.vocab_size), y[:, 1:].contiguous().view(-1))
@@ -586,8 +586,6 @@ class Test_Model:
         # eval_iter = eval_v
         self.dataloader_train = DataLoader(train_iter, batch_size=4,collate_fn=collate_fn)
         self.dataloader_val = DataLoader(eval_iter, batch_size=4,collate_fn=collate_fn)
-
-        
 
         # Main loop
         start_time = time.time()

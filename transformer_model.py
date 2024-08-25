@@ -157,8 +157,7 @@ class Transformers:
         # ax.set_ylim(0, 1)  # Adjust based on expected loss values
 
         self.transformer.train()
-       
-        
+
         for epochs in tqdm(range(self.n_epochs),desc="Epoch:",leave=False):
 
             zipdata = zip(list_input,list_output)
@@ -169,7 +168,7 @@ class Transformers:
                 input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=0)
                 output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=0)
                 
-                self.model.optimizer.zero_grad()
+                # self.model.optimizer.zero_grad()
 
                 zipdata2 = zip(input_loader,output_loader)
 
