@@ -180,16 +180,16 @@ class Transformers:
                         #batch data again
                         tepoch.set_description(f"BATCHES {count}")
 
-                        input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=0)
-                        output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=0)
+                        # input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=0)
+                        # output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=0)
                         
-                        # self.model.optimizer.zero_grad()
+                        # # self.model.optimizer.zero_grad()
 
-                        for list_inin, list_outout in zip(input_loader,output_loader):
+                        # for list_inin, list_outout in zip(input_loader,output_loader):
                             
                             
-                            list_inin = list_inin.to("cuda")
-                            list_outout = list_outout.to("cuda")
+                            # list_inin = list_inin.to("cuda")
+                            # list_outout = list_outout.to("cuda")
 
                             # print(f"\tlist_inin size: {list_inin.shape} list_outout size: {list_outout.shape}")
                             #print(list_inin,list_outout[:,:1])
@@ -198,43 +198,46 @@ class Transformers:
                             # qdecode = datasetss.decode(list_inin)
                             # adecode = datasetss.decode(list_outout)
                             # print(f"Question: {qdecode}\nAnswer{adecode}")
-                            output = self.transformer(list_inin, list_outout[:,:-1])
-                            #output = self.transformer(list_inin, list_outout)
 
+
+
+                        output = self.transformer(list_in, list_out[:,:-1])
+                        #output = self.transformer(list_inin, list_outout)
+
+                    
                         
-                            
-                            # loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
-                            loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_out[:, 1:].contiguous().view(-1))
-                            loss.backward()
+                        # loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
+                        loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_out[:, 1:].contiguous().view(-1))
+                        loss.backward()
 
-                            losses += loss.item()
+                        losses += loss.item()
 
-                            preds = output.argmax(dim=-1)
-                            masked_pred = preds * (list_outout[:, 1:]!=0)
-                            accuracy = (masked_pred == list_outout[:, 1:]).float().mean()
-                            acc += accuracy.item()
+                        preds = output.argmax(dim=-1)
+                        masked_pred = preds * (list_out[:, 1:]!=0)
+                        accuracy = (masked_pred == list_out[:, 1:]).float().mean()
+                        acc += accuracy.item()
 
-                            self.optimizer.step()
+                        self.optimizer.step()
 
-                            history_loss.append(loss.item())
-                            history_acc.append(accuracy.item())
-                            train_loss, train_acc, hist_loss, hist_acc = losses / len(list(list_out)), acc / len(list(list_out)), history_loss, history_acc
-                            history['train_loss'] += hist_loss
-                            history['train_acc'] += hist_acc
+                        history_loss.append(loss.item())
+                        history_acc.append(accuracy.item())
+                        train_loss, train_acc, hist_loss, hist_acc = losses / len(list(list_out)), acc / len(list(list_out)), history_loss, history_acc
+                        history['train_loss'] += hist_loss
+                        history['train_acc'] += hist_acc
 
+
+                        tepoch.set_postfix(loss=loss.item(), accuracy=100. * accuracy.item())
+                        #print(f"Epoch: {epochs+1}, Loss: {loss.item()}")
+                        count += 1
     
-                            tepoch.set_postfix(loss=loss.item(), accuracy=100. * accuracy.item())
-                            #print(f"Epoch: {epochs+1}, Loss: {loss.item()}")
-                            count += 1
-        
-                            end_time = time.time()
-                        val_loss, val_acc, hist_loss, hist_acc = self.evaluate(self.transformer, zip(list_in, list_out), self.criterion)
-                        history['eval_loss'] += hist_loss
-                        history['eval_acc'] += hist_acc
-                        print((f"Epoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s"))
+                        end_time = time.time()
+                    val_loss, val_acc, hist_loss, hist_acc = self.evaluate(self.transformer, zip(list_in, list_out), self.criterion)
+                    history['eval_loss'] += hist_loss
+                    history['eval_acc'] += hist_acc
+                    print((f"Epoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s"))
 
-                model_save_path = "model_checkpoint.pth"
-                self.save_model(model_save_path)
+            model_save_path = "model_checkpoint.pth"
+            self.save_model(model_save_path)
             
     def evaluate(self,model, loader, loss_fn):
         model.eval()
