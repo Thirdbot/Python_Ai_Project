@@ -31,7 +31,7 @@ class Program:
         
         self.datapath = "datasets"
         self.batch = 16 #batch size in this refer to bbatch in save files mean 32 batch for n times
-        self.pad_size = 25000
+        self.pad_size = 100
 
         self.data_fetch = {'files':{}}
         self.run_train = True
@@ -136,6 +136,24 @@ class Program:
                 #yield saved
                 yield result
                 batch = []
+            #     for stuff in embedd_file[type][label]['embeddings']:
+            #     for row in stuff:
+            #         numpy_array =torch.stack([torch.tensor(np.array(obj),dtype=torch.long).to("cuda") for obj in row])
+            #         #padd_arr = self.pad_array(numpy_array,self.pad_size)
+
+            #         #padding
+            #         #padd_arr = self.pad_encode_array(numpy_array,self.pad_size)
+
+            #         #no padding
+            #         batch.append(numpy_array)
+
+            #         #turn into int because encode not embeddings
+            #         #batch.append(padd_arr.to(dtype=int))
+            #         result = torch.stack(batch).to("cuda")
+                
+            #     saved.append(result)
+            # saved = torch.stack(batch).to("cuda")
+            # return saved
             
 
         else:
