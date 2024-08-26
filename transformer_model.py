@@ -24,13 +24,13 @@ class Transformers:
         #its an attention of srcand tgt size that interpret so word_size need to be same as vocabb_size
         self.src_vocab_size = 25000
         self.tgt_vocab_size = 25000
-        self.d_model = 512
+        self.d_model = 768
         self.num_heads = 8
         self.num_layers = 6
         self.d_ff = 2048
         # max_seq_length = 100
         self.dropout = 0.1
-        self.lr = 0.000001
+        self.lr = 0.0001
         self.word_size = 25000
         
         self.n_epochs = 100
@@ -109,21 +109,21 @@ class Transformers:
             decoded_output = datasetss.decode(output_tokens)
             print("output: ", decoded_output)
 
-            #fig = plt.figure()
-            # images = self.transformer.decoder.decoder_blocks[0].cross_attention.attention_weigths[0,...].cpu().detach().numpy().mean(axis=0)
+            fig = plt.figure()
+            images = self.transformer.decoder_layers[0].cross_attn[0,...].cpu().detach().numpy().mean(axis=0)
 
-            # fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+            fig, ax = plt.subplots(1, 1, figsize=(10, 10))
             
-            # ax.set_yticks(range(len(output)))
-            # ax.set_xticks(range(len(sentence)))
-            # ax.xaxis.set_label_position('top')
-            # ax.set_xticklabels(list(sentence))
-            # ax.set_yticklabels([f"step {i}" for i in range(len(output))])
-            # images = np.clip(images, 0, 1)
-            # # images = np.mean(images, axis=0)
-            # cax = ax.imshow(images, aspect='auto', cmap='viridis')
-            # fig.colorbar(cax)
-            # plt.show()  # Ensure the plot is displayed
+            ax.set_yticks(range(len(output)))
+            ax.set_xticks(range(len(sentence)))
+            ax.xaxis.set_label_position('top')
+            ax.set_xticklabels(list(sentence))
+            ax.set_yticklabels([f"step {i}" for i in range(len(output))])
+            images = np.clip(images, 0, 1)
+            # images = np.mean(images, axis=0)
+            cax = ax.imshow(images, aspect='auto', cmap='viridis')
+            fig.colorbar(cax)
+            plt.show()  # Ensure the plot is displayed
 
             
     def runtrain(self,inputs,outs):
@@ -204,7 +204,7 @@ class Transformers:
                         
                             
                             # loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
-                            loss = self.criterion(output.contiguous().view(-1, self.word_size), list_outout[:, 1:].contiguous().view(-1))
+                            loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_out[:, 1:].contiguous().view(-1))
                             loss.backward()
 
                             losses += loss.item()
@@ -247,7 +247,7 @@ class Transformers:
             x = x.unsqueeze(0)
             y = y.unsqueeze(0)
             logits = model(x, y[:,:-1])
-            loss = loss_fn(logits.contiguous().view(-1, self.word_size), y[:, 1:].contiguous().view(-1))
+            loss = loss_fn(logits.contiguous().view(-1, self.tgt_vocab_size), y[:, 1:].contiguous().view(-1))
             losses += loss.item()
             
             preds = logits.argmax(dim=-1)
