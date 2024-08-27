@@ -117,6 +117,11 @@ class Program:
             embedd_file = self.load_feature(make_path)
             
             #make it row by row array
+
+                #saved = torch.stack([result]).to("cuda")
+            #saved = torch.stack(batch).to("cuda")
+            
+
             for stuff in embedd_file[type][label]['embeddings']:
                 for row in stuff:
                     numpy_array =torch.stack([torch.tensor(np.array(obj),dtype=torch.long).to("cuda") for obj in row])
@@ -136,24 +141,6 @@ class Program:
                 #yield saved
                 yield result
                 batch = []
-            #     for stuff in embedd_file[type][label]['embeddings']:
-            #     for row in stuff:
-            #         numpy_array =torch.stack([torch.tensor(np.array(obj),dtype=torch.long).to("cuda") for obj in row])
-            #         #padd_arr = self.pad_array(numpy_array,self.pad_size)
-
-            #         #padding
-            #         #padd_arr = self.pad_encode_array(numpy_array,self.pad_size)
-
-            #         #no padding
-            #         batch.append(numpy_array)
-
-            #         #turn into int because encode not embeddings
-            #         #batch.append(padd_arr.to(dtype=int))
-            #         result = torch.stack(batch).to("cuda")
-                
-            #     saved.append(result)
-            # saved = torch.stack(batch).to("cuda")
-            # return saved
             
 
         else:

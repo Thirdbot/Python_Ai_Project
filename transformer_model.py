@@ -27,14 +27,14 @@ class Transformers:
         self.d_model = 768
         self.num_heads = 8
         self.num_layers = 6
-        self.d_ff = 2048
+        self.d_ff = 4096
         # max_seq_length = 100
         self.dropout = 0.1
-        self.lr = 0.0001
+        self.lr = 0.00001
         self.word_size = 25000
         
         self.n_epochs = 100
-        self.batch = 16 #batch in this refer to batch for training
+        self.batch = 1 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         self.criterion = nn.CrossEntropyLoss(ignore_index=0)
@@ -81,9 +81,8 @@ class Transformers:
             sentence = input("You: ")
             if sentence.lower() == "quit":
                 break
-            sentence = sentence.split()
             print(sentence)
-            embbed_sent = self.ListEmbeddings(sentence,100)
+            embbed_sent = self.ListEmbeddings([sentence],100)
             print(embbed_sent)
             embbed_sent = embbed_sent.to("cuda")  # Ensure embeddings are on the correct device
             print(embbed_sent.shape)
@@ -109,21 +108,21 @@ class Transformers:
             decoded_output = datasetss.decode(output_tokens)
             print("output: ", decoded_output)
 
-            fig = plt.figure()
-            images = self.transformer.decoder_layers[0].cross_attn[0,...].cpu().detach().numpy().mean(axis=0)
+            # fig = plt.figure()
+            # images = self.transformer.decoder_layers[0].cross_attn[0,...].cpu().detach().numpy().mean(axis=0)
 
-            fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+            # fig, ax = plt.subplots(1, 1, figsize=(10, 10))
             
-            ax.set_yticks(range(len(output)))
-            ax.set_xticks(range(len(sentence)))
-            ax.xaxis.set_label_position('top')
-            ax.set_xticklabels(list(sentence))
-            ax.set_yticklabels([f"step {i}" for i in range(len(output))])
-            images = np.clip(images, 0, 1)
-            # images = np.mean(images, axis=0)
-            cax = ax.imshow(images, aspect='auto', cmap='viridis')
-            fig.colorbar(cax)
-            plt.show()  # Ensure the plot is displayed
+            # ax.set_yticks(range(len(output)))
+            # ax.set_xticks(range(len(sentence)))
+            # ax.xaxis.set_label_position('top')
+            # ax.set_xticklabels(list(sentence))
+            # ax.set_yticklabels([f"step {i}" for i in range(len(output))])
+            # images = np.clip(images, 0, 1)
+            # # images = np.mean(images, axis=0)
+            # cax = ax.imshow(images, aspect='auto', cmap='viridis')
+            # fig.colorbar(cax)
+            # plt.show()  # Ensure the plot is displayed
 
             
     def runtrain(self,inputs,outs):
@@ -148,8 +147,7 @@ class Transformers:
     
     
     def feedmodel(self,list_input,list_output):
-        
-       
+          
         self.transformer.train()
         losses = 0
         acc = 0
@@ -164,28 +162,28 @@ class Transformers:
 
         # src_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
         # tgt_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
-        # datasetss = Datasets()
+        datasetss = Datasets()
         with tqdm(range(self.n_epochs), position=0, leave=False) as tepoch:
             for epochs in tepoch:
                 start_time = time.time()
 
-                
                 tepoch.set_description(f"Epoch {epochs}")
                  #for epochs in tqdm(range(self.n_epochs),desc="EPOCHS:",leave=False):
                 count = 0
                 # size = 0
-                with tqdm(zip(list_input,list_output), position=0, leave=False) as tbatch:
-                    for (list_in,list_out) in tbatch:
+                with tqdm(zip(list_input,list_output), position=1, leave=False) as tbatch:
+                    
+                    
+                    self.optimizer.zero_grad()
 
+                    for (list_in,list_out) in tbatch:
+                        tbatch.set_description(f"BATCHES {count}")
                         # print(f"list_in size: {len(list_in)} list_out size: {len(list_out)}")
                         #batch data again
-                        tepoch.set_description(f"BATCHES {count}")
-
+                        
+                        #self.model.optimizer.zero_grad()
                         input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=0)
                         output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=0)
-
-                        self.optimizer.zero_grad()
-                        #self.model.optimizer.zero_grad()
 
                         for list_inin, list_outout in zip(input_loader,output_loader):
                             
@@ -194,7 +192,7 @@ class Transformers:
                             list_outout = list_outout.to("cuda")
 
                             # print(f"\tlist_inin size: {list_inin.shape} list_outout size: {list_outout.shape}")
-                            # print(list_inin.shape,list_outout.shape)
+                            #print(list_inin.shape,list_outout.shape)
                             # print(src_data,tgt_data)
                             # qdecode = datasetss.decode(list_inin)
                             # adecode = datasetss.decode(list_outout)
@@ -202,21 +200,21 @@ class Transformers:
 
 
 
-                            output = self.transformer(list_inin[:,:-1], list_outout[:,:-1])
+                            output = self.transformer(list_inin, list_outout)
                             #output = self.transformer(list_inin, list_outout)
 
                         
                             
                             # loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
-                            loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, :-1].contiguous().view(-1))
+                            loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout.contiguous().view(-1))
 
                             loss.backward()
 
                             losses += loss.item()
 
                             preds = output.argmax(dim=-1)
-                            masked_pred = preds * (list_out[:, 1:]!=0)
-                            accuracy = (masked_pred == list_out[:, 1:]).float().mean()
+                            masked_pred = preds * (list_outout!=0)
+                            accuracy = (masked_pred == list_outout).float().mean()
                             acc += accuracy.item()
 
                             self.optimizer.step()
@@ -224,7 +222,7 @@ class Transformers:
                             # history_loss.append(loss.item())
                             # history_acc.append(accuracy.item())
 
-                            train_loss, train_acc, hist_loss, hist_acc = losses / len(list(list_out)), acc / len(list(list_out)), history_loss, history_acc
+                            train_loss, train_acc, hist_loss, hist_acc = losses / len(list(list_outout)), acc / len(list(list_outout)), history_loss, history_acc
 
                             # history['train_loss'] += hist_loss
                             # history['train_acc'] += hist_acc
@@ -232,17 +230,18 @@ class Transformers:
 
                             tepoch.set_postfix(loss=loss.item(), accuracy=100. * accuracy.item())
                             #print(f"Epoch: {epochs+1}, Loss: {loss.item()}")
-                            # count += 1
+                            count += 1
         
-                        end_time = time.time()
-                        val_loss, val_acc, hist_loss, hist_acc = self.evaluate(self.transformer, zip(list_in, list_out), self.criterion)
-                        # history['eval_loss'] += hist_loss
-                        # history['eval_acc'] += hist_acc
+                            end_time = time.time()
+                            val_loss, val_acc, hist_loss, hist_acc = self.evaluate(self.transformer, zip(list_inin, list_outout), self.criterion)
+                            # history['eval_loss'] += hist_loss
+                            # history['eval_acc'] += hist_acc
 
-                        print((f"Epoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s"))
+                            print((f"Epoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s"))
 
-                model_save_path = "model_checkpoint.pth"
-                self.save_model(model_save_path)
+            model_save_path = "model_checkpoint.pth"
+            print("save model")
+            self.save_model(model_save_path)
             
     def evaluate(self,model, loader, loss_fn):
         model.eval()
@@ -254,13 +253,13 @@ class Transformers:
         for x, y in tqdm(loader, position=0, leave=True):
             x = x.unsqueeze(0)
             y = y.unsqueeze(0)
-            logits = model(x[:,:-1], y[:,:-1])
-            loss = loss_fn(logits.contiguous().view(-1, self.tgt_vocab_size), y[:, :-1].contiguous().view(-1))
+            logits = model(x, y)
+            loss = loss_fn(logits.contiguous().view(-1, self.tgt_vocab_size), y.contiguous().view(-1))
             losses += loss.item()
             
             preds = logits.argmax(dim=-1)
-            masked_pred = preds * (y[:, 1:]!=0)
-            accuracy = (masked_pred == y[:, 1:]).float().mean()
+            masked_pred = preds * (y!=0)
+            accuracy = (masked_pred == y).float().mean()
             acc += accuracy.item()
             
             history_loss.append(loss.item())
