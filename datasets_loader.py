@@ -224,7 +224,7 @@ class Datasets:
                                                             return_attention_mask = True, return_tensors='pt')
             
             q_inputs_tensor_id = q_encode['input_ids'].cuda()
-            q_inputs_tensor_mask = q_encode['attention_mask'].cuda()
+            # q_inputs_tensor_mask = q_encode['attention_mask'].cuda()
 
             # with torch.no_grad(): 
             #         q_outputs = self.model(q_inputs_tensor_id, attention_mask=q_inputs_tensor_mask)
@@ -241,8 +241,8 @@ class Datasets:
             # }
             
             #encode 
-            embed_space['embeddings'].append(q_inputs_tensor_id.tolist())
-            # embed_space['embeddings'].append(last_layer)
+            #embed_space['embeddings'].append(q_inputs_tensor_id.tolist())
+            embed_space['embeddings'].append(q_inputs_tensor_id)
             print(f"{save_name} {label} concatenated rows: {rowcount} ")
         return embed_space
         

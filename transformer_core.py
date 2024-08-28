@@ -109,6 +109,8 @@ class DecoderLayer(nn.Module):
 class Transformer(nn.Module):
     def __init__(self, src_vocab_size, tgt_vocab_size, d_model, num_heads, num_layers, d_ff, max_seq_length, dropout):
         super(Transformer, self).__init__()
+        # self.encoder_embedding = nn.Embedding(src_vocab_size, d_model)
+        # self.decoder_embedding = nn.Embedding(tgt_vocab_size, d_model)
         self.encoder_embedding = nn.Embedding(src_vocab_size, d_model)
         self.decoder_embedding = nn.Embedding(tgt_vocab_size, d_model)
        
@@ -134,6 +136,8 @@ class Transformer(nn.Module):
 
         embeded_src = self.encoder_embedding(src).float()
         embedded_tgt = self.decoder_embedding(tgt).float()
+        # embeded_src = src
+        # embedded_tgt = tgt
         src_pos = self.positional_encoding(embeded_src)
         tgt_pos = self.positional_encoding(embedded_tgt)
 
