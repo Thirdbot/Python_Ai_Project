@@ -24,7 +24,7 @@ class Transformers:
         #its an attention of srcand tgt size that interpret so word_size need to be same as vocabb_size
         self.src_vocab_size = 25000
         self.tgt_vocab_size = 25000
-        self.d_model = 512
+        self.d_model = 768
         self.num_heads = 8
         self.num_layers = 6
         self.d_ff = 2048
@@ -37,10 +37,14 @@ class Transformers:
         self.batch = 1 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
+        
+        
+        if os.path.exists("model_checkpoint.pth"):
+            self.transformer = self.load_model(path="model_checkpoint.pth")
+            
+
         self.criterion = nn.CrossEntropyLoss(ignore_index=0)
         self.optimizer = torch.optim.Adam(self.transformer.parameters(), lr=self.lr, betas=(0.9, 0.98), eps=1e-9)
-        
-
 
     def load_model(self, path):
         checkpoint = torch.load(path)
@@ -173,7 +177,7 @@ class Transformers:
         count = 0
         with tqdm(zip(list_input,list_output), position=0, leave=True) as tbatch:
             for list_in,list_out in tbatch:
-                tbatch.set_description(f"Batch {count}")
+                
                 input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=0,shuffle=True,generator=generator)
                 output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=0,shuffle=True,generator=generator)
 
@@ -184,7 +188,8 @@ class Transformers:
                 
                 for list_inin, list_outout in zip(input_loader,output_loader):
                     self.transformer.train()
-                    
+                    tbatch.set_description(f"Batch {count}")
+
                     with tqdm(range(self.n_epochs), position=1, leave=True) as tepoch:
                         for epochs in tepoch:
                             start_time = time.time()

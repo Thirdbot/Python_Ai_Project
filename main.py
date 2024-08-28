@@ -57,8 +57,6 @@ class Program:
                         print("couple: ",couple)
                         self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                         self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
-                        self.testinputs = self.soupDatasets(data_path,couple[0],'test',self.make_file)
-                        self.testoutputs = self.soupDatasets(data_path,couple[1],'test',self.make_file)
                         transformer_model.runtrain(self.inputs,self.outputs)
                         #self.embedded(arr=self.inputs)
                         
