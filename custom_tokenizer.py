@@ -24,8 +24,10 @@ class Tokenization:
                 f.write(self.wiki_ds[i]["text"]+ "\n")
         #custom tokenizer
         #define unknown tokens and models to work with trainner like bpe,wordpiece etc...
-        #tokenizer = Tokenizer(models.WordPiece(unk_token="[UNK]"))
-        tokenizer = Tokenizer(models.BPE())
+
+
+        tokenizer = Tokenizer(models.WordPiece(unk_token="[UNK]"))
+        #tokenizer = Tokenizer(models.BPE())
 
         # tokenizer.pre_tokenizer = pre_tokenizers.Sequence(
         #      [pre_tokenizers.WhitespaceSplit(), pre_tokenizers.Punctuation()]
@@ -37,17 +39,19 @@ class Tokenization:
         )
 
         #using Bert to seperate in space and punctuation
-        #tokenizer.pre_tokenizer = pre_tokenizers.BertPreTokenizer()
+        tokenizer.pre_tokenizer = pre_tokenizers.BertPreTokenizer()
         #byte level seperation
-        tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=True)
+        #tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=True)
 
+        #word piece
         #specials tokens defined
-        #special_tokens = ["[PAD]", "[CLS]","<|endoftext|>"]
+        special_tokens = ["[PAD]", "[CLS]","<|endoftext|>"]
         #set trainers with special token seperately
-        #trainer = trainers.WordPieceTrainer(vocab_size=25000, special_tokens=special_tokens)
+        trainer = trainers.WordPieceTrainer(vocab_size=25000, special_tokens=special_tokens)
         
+        #byte pair
         #set trainers with one special tokens at the end
-        trainer = trainers.BpeTrainer(vocab_size=25000, special_tokens=["<|endoftext|>"])
+        #trainer = trainers.BpeTrainer(vocab_size=25000, special_tokens=["<|endoftext|>"])
         #get each batch sector from datasets to train tokenizer
 
         tokenizer.train_from_iterator(self.get_wiki_corpus(),trainer=trainer)
@@ -80,11 +84,11 @@ class Tokenization:
         # )
         
         #include whitespace in merging
-        tokenizer.post_processor = processors.ByteLevel(trim_offsets=True)
+        #tokenizer.post_processor = processors.ByteLevel(trim_offsets=True)
 
         #set merge word
-        #tokenizer.decoder = decoders.WordPiece(prefix="##")
-        tokenizer.decoder = decoders.ByteLevel()
+        tokenizer.decoder = decoders.WordPiece(prefix="##")
+        #tokenizer.decoder = decoders.ByteLevel()
         #save tokenizer
         tokenizer.save("tokenizer.json")
 

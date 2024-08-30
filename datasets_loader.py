@@ -29,11 +29,16 @@ class Datasets:
         #set default in-file changed
         self.set_tokenizer = GPT2TokenizerFast(tokenizer_object = Tokenizer.from_file(self.token_path))
          
-        self.set_tokenizer.eos_token = self.set_tokenizer.eos_token
+        # self.set_tokenizer.eos_token = self.set_tokenizer.eos_token
+        # self.set_tokenizer.pad_token = self.set_tokenizer.eos_token
+        # self.set_tokenizer.bos_token = self.set_tokenizer.bos_token
+
+        self.set_tokenizer.cls_token = self.set_tokenizer.bos_token
+        self.set_tokenizer.sep_token = self.set_tokenizer.eos_token
         self.set_tokenizer.pad_token = self.set_tokenizer.eos_token
-        self.set_tokenizer.bos_token = self.set_tokenizer.bos_token
         
-        self.model = GPT2Model.from_pretrained('gpt2').cuda()
+        # self.model = GPT2Model.from_pretrained('gpt2').cuda()
+        self.model = BertModel.from_pretrained('bert-base-uncased').cuda()
         self.model.eval()
         #self.find_datasets = self.Datasets_Finder(self.path)
         
@@ -224,6 +229,7 @@ class Datasets:
                                                             return_attention_mask = True, return_tensors='pt')
             
             q_inputs_tensor_id = q_encode['input_ids'].cuda()
+            
             # q_inputs_tensor_mask = q_encode['attention_mask'].cuda()
 
             # with torch.no_grad(): 
@@ -242,8 +248,8 @@ class Datasets:
             
             #encode 
             #embed_space['embeddings'].append(q_inputs_tensor_id.tolist())
-            embed_space['embeddings'].append(q_inputs_tensor_id)
-            print(f"{save_name} {label} concatenated rows: {rowcount} ")
+            embed_space['embeddings'].append(q_inputs_tensor_id.tolist())
+            print(f"{save_name} {label} concatenated rows: {rowcount} Data:{q_inputs_tensor_id.tolist()}")
         return embed_space
         
     def save_mem_to_json(self,file_path,data):

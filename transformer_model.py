@@ -22,8 +22,8 @@ class Transformers:
     def __init__(self) -> None:
         super().__init__()
         #its an attention of srcand tgt size that interpret so word_size need to be same as vocabb_size
-        self.src_vocab_size = 25000
-        self.tgt_vocab_size = 25000
+        self.src_vocab_size = 25063
+        self.tgt_vocab_size = 25063
         self.d_model = 768
         self.num_heads = 8
         self.num_layers = 6
@@ -31,21 +31,20 @@ class Transformers:
         # max_seq_length = 100
         self.dropout = 0.1
         self.lr = 0.00001
-        self.word_size = 25000
+        self.word_size = 25063
         
         self.n_epochs = 100
-        self.batch = 1 #batch in this refer to batch for training
+        self.batch = 32 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
-        
-        if os.path.exists("model_checkpoint.pth"):
-            self.transformer = self.load_model(path="model_checkpoint.pth")
-            
-
         self.criterion = nn.CrossEntropyLoss(ignore_index=0)
         self.optimizer = torch.optim.Adam(self.transformer.parameters(), lr=self.lr, betas=(0.9, 0.98), eps=1e-9)
 
+       
+            
+
+        
     def load_model(self, path):
         checkpoint = torch.load(path)
         
@@ -85,11 +84,11 @@ class Transformers:
             sentence = input("You: ")
             if sentence.lower() == "quit":
                 break
-            print(sentence)
+            #print(sentence)
             embbed_sent = self.ListEmbeddings([sentence],100)
             print(embbed_sent)
             embbed_sent = embbed_sent.to("cuda")  # Ensure embeddings are on the correct device
-            print(embbed_sent.shape)
+            #print(embbed_sent.shape)
             # Initialize the tgt_data with start tokens, like    [CLS] or any start token you used during training
             tgt_data = torch.ones(embbed_sent.shape[0], 1, dtype=torch.long).to("cuda")
             for i in range(1, 100):  # Assuming max length 100
@@ -103,8 +102,8 @@ class Transformers:
                 # Append the predicted token to the target sequence
                 tgt_data = torch.cat((tgt_data, next_token), dim=1)
 
-                # Stop if the model predicts the end token
-                if next_token.item() == 0:
+                # Stop if the model predicts the end token 2 is end token
+                if next_token.item() == 2:
                     break
 
                 # Decode the generated sequence
@@ -138,9 +137,9 @@ class Transformers:
         embeds = []
         sequence_lengths = []
 
-        embed_input = datasets_Detail.set_tokenizer.batch_encode_plus(list_input, padding='max_length',truncation=True,add_special_tokens = False,return_attention_mask = True,max_length=word_size, return_tensors='pt')
+        embed_input = datasets_Detail.set_tokenizer.batch_encode_plus(list_input, padding='max_length',truncation=True,add_special_tokens = True,return_attention_mask = True,max_length=word_size, return_tensors='pt')
         
-        embedded_model = GPT2Model.from_pretrained('gpt2')
+        #embedded_model = GPT2Model.from_pretrained('gpt2')
         tensor_id = embed_input['input_ids'].long()
         tensor_mask = embed_input['attention_mask'].long()
         
@@ -175,6 +174,9 @@ class Transformers:
                 
         generator = torch.Generator(device='cuda')
         count = 0
+        if os.path.exists("model_checkpoint.pth"):
+            self.transformer = self.load_model(path="model_checkpoint.pth")
+            
         with tqdm(zip(list_input,list_output), position=0, leave=True) as tbatch:
             for list_in,list_out in tbatch:
                 
@@ -220,12 +222,13 @@ class Transformers:
                             losses += loss.item()
 
                             preds = output.argmax(dim=-1)
-                            masked_pred = preds * (list_outout[:,1:]!=0)
+                            masked_pred = preds * (list_outout[:,1:]!=2)
                             accuracy = (masked_pred == list_outout[:,1:]).float().mean()
                             acc += accuracy.item()
 
                             self.optimizer.step()
 
+                            count += 1
                             # history_loss.append(loss.item())
                             # history_acc.append(accuracy.item())
                             tepoch.set_postfix(loss=loss.item(), accuracy=100. * accuracy.item())
@@ -245,12 +248,12 @@ class Transformers:
                     # history['eval_loss'] += hist_loss
                     # history['eval_acc'] += hist_acc
                     tbatch.set_postfix(trainloss=train_loss, trainaccuracy=train_acc,val_loss=val_loss,val_acc=val_acc)
-                    count += 1
+                    
                     #print((f"Epoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s"))
 
-            model_save_path = "model_checkpoint.pth"
-            print("save model")
-            self.save_model(model_save_path)
+                    model_save_path = "model_checkpoint.pth"
+                    print("save model")
+                    self.save_model(model_save_path)
             
     def evaluate(self,model, loader, loss_fn):
         model.eval()
@@ -267,7 +270,7 @@ class Transformers:
             losses += loss.item()
             
             preds = logits.argmax(dim=-1)
-            masked_pred = preds * (y[:,1:]!=0)
+            masked_pred = preds * (y[:,1:]!=2)
             accuracy = (masked_pred == y[:,1:]).float().mean()
             acc += accuracy.item()
             
