@@ -1,6 +1,7 @@
 ###this part for load multiple datasets load secound
 from datasets import load_dataset,get_dataset_config_names,get_dataset_split_names,get_dataset_infos
-from transformers import GPT2TokenizerFast,BertModel,GPT2Model
+from transformers import GPT2TokenizerFast,BertModel,GPT2Model,BertTokenizerFast
+
 from tokenizers import Tokenizer
 import numpy as np
 import torch
@@ -27,16 +28,17 @@ class Datasets:
         self.max_length = 100
         self.path = path
         #set default in-file changed
-        self.set_tokenizer = GPT2TokenizerFast(tokenizer_object = Tokenizer.from_file(self.token_path))
+        #self.set_tokenizer = GPT2TokenizerFast(tokenizer_object = Tokenizer.from_file(self.token_path))
          
         # self.set_tokenizer.eos_token = self.set_tokenizer.eos_token
         # self.set_tokenizer.pad_token = self.set_tokenizer.eos_token
         # self.set_tokenizer.bos_token = self.set_tokenizer.bos_token
 
-        self.set_tokenizer.cls_token = self.set_tokenizer.bos_token
-        self.set_tokenizer.sep_token = self.set_tokenizer.eos_token
-        self.set_tokenizer.pad_token = self.set_tokenizer.eos_token
+        # self.set_tokenizer.cls_token = self.set_tokenizer.bos_token
+        # self.set_tokenizer.sep_token = self.set_tokenizer.eos_token
+        # self.set_tokenizer.pad_token = self.set_tokenizer.eos_token
         
+        self.set_tokenizer = BertTokenizerFast(tokenizer_file=self.token_path)
         # self.model = GPT2Model.from_pretrained('gpt2').cuda()
         self.model = BertModel.from_pretrained('bert-base-uncased').cuda()
         self.model.eval()
@@ -224,7 +226,7 @@ class Datasets:
         
             rowcount += len(data[label])
 
-            q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding=True,max_length=max_length,
+            q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding='longest',max_length=max_length,
                                                             truncation=True,add_special_tokens = True,
                                                             return_attention_mask = True, return_tensors='pt')
             

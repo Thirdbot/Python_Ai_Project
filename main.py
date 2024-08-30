@@ -35,6 +35,7 @@ class Program:
 
         self.data_fetch = {'files':{}}
         self.run_train = True
+        
 
         self.file_parquet = self.find_datasets(self.datapath,".feather")
         self.file_csv = self.find_datasets(self.datapath,".csv")

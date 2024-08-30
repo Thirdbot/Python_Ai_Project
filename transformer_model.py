@@ -34,15 +34,14 @@ class Transformers:
         self.word_size = 25063
         
         self.n_epochs = 100
-        self.batch = 32 #batch in this refer to batch for training
+        self.batch = 16 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
         self.criterion = nn.CrossEntropyLoss(ignore_index=0)
         self.optimizer = torch.optim.Adam(self.transformer.parameters(), lr=self.lr, betas=(0.9, 0.98), eps=1e-9)
 
-       
-            
+        
 
         
     def load_model(self, path):
@@ -141,6 +140,7 @@ class Transformers:
         
         #embedded_model = GPT2Model.from_pretrained('gpt2')
         tensor_id = embed_input['input_ids'].long()
+        
         tensor_mask = embed_input['attention_mask'].long()
         
         return tensor_id
@@ -156,16 +156,11 @@ class Transformers:
         acc = 0
         history_loss = []
         history_acc = []
-        history = {
-            'train_loss': [],
-            'eval_loss': [],
-            'train_acc': [],
-            'eval_acc': []
-        }
+        
 
         # src_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
         # tgt_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
-        #datasetss = Datasets()
+        datasetss = Datasets()
         
         #for epochs in tqdm(range(self.n_epochs),desc="EPOCHS:",leave=False):
     
@@ -177,35 +172,39 @@ class Transformers:
         if os.path.exists("model_checkpoint.pth"):
             self.transformer = self.load_model(path="model_checkpoint.pth")
 
-        with tqdm(zip(list_input,list_output), position=0, leave=True) as tbatch:
+
+        with tqdm(zip(list_input,list_output), position=1, leave=True) as tbatch:
             for list_in,list_out in tbatch:
-                
+        
                 input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=0,shuffle=True,generator=generator)
                 output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=0,shuffle=True,generator=generator)
 
-                # print(f"list_in size: {len(list_in)} list_out size: {len(list_out)}")
-                #batch data again
-                #self.model.optimizer.zero_grad()
+        # print(f"list_in size: {len(list_in)} list_out size: {len(list_out)}")
+        #batch data again
+        #self.model.optimizer.zero_grad()
+        
+        
+                for list_inin, list_outout in zip(input_loader,output_loader):
+                    self.transformer.train()
+                    count += 1
+                    tbatch.set_description(f"Batch {count}")
+                    print(f"\tlist_inin size: {list_inin.shape} list_outout size: {list_outout.shape}")
+                    print(list_inin,list_outout)
+                    # print(src_data,tgt_data)
+                    qdecode = datasetss.decode(list_inin)
+                    adecode = datasetss.decode(list_outout)
+                    print(f"Question: {qdecode}\nAnswer{adecode}")
 
-                with tqdm(range(self.n_epochs), position=1, leave=True) as tepoch:
-                    for epochs in tepoch:
-                        start_time = time.time()
-            
-                        for list_inin, list_outout in zip(input_loader,output_loader):
-                            self.transformer.train()
-                            tbatch.set_description(f"Batch {count}")
+                    
 
+                    with tqdm(range(self.n_epochs), position=0, leave=True) as tepoch:
+                        for epochs in tepoch:
+                            start_time = time.time()  
                             tepoch.set_description(f"Epoch {epochs}")
                             list_inin = list_inin.cuda()
                             list_outout = list_outout.cuda()
 
-                            # print(f"\tlist_inin size: {list_inin.shape} list_outout size: {list_outout.shape}")
-                            #print(list_inin.shape,list_outout.shape)
-                            # print(src_data,tgt_data)
-                            # qdecode = datasetss.decode(list_inin)
-                            # adecode = datasetss.decode(list_outout)
-                            # print(f"Question: {qdecode}\nAnswer{adecode}")
-
+                           
 
                             self.optimizer.zero_grad()
                             output = self.transformer(list_inin, list_outout)
@@ -221,26 +220,25 @@ class Transformers:
                             losses += loss.item()
 
                             preds = output.argmax(dim=-1)
-                            masked_pred = preds * (list_outout!=2)
+                            masked_pred = preds * (list_outout!=0)
                             accuracy = (masked_pred == list_outout).float().mean()
                             acc += accuracy.item()
 
                             self.optimizer.step()
 
-                            count += 1
                             # history_loss.append(loss.item())
                             # history_acc.append(accuracy.item())
                             tepoch.set_postfix(loss=loss.item(), accuracy=100. * accuracy.item())
 
                     train_loss, train_acc, hist_loss, hist_acc = losses / len(list_outout), acc / len(list_outout), history_loss, history_acc
 
-                    # history['train_loss'] += hist_loss
-                    # history['train_acc'] += hist_acc
+        # history['train_loss'] += hist_loss
+        # history['train_acc'] += hist_acc
 
 
-                    
-                    #print(f"Epoch: {epochs+1}, Loss: {loss.item()}")
-                    
+        
+        #print(f"Epoch: {epochs+1}, Loss: {loss.item()}")
+        
 
                     end_time = time.time()
                     val_loss, val_acc, hist_loss, hist_acc = self.evaluate(self.transformer, zip(list_inin, list_outout), self.criterion)
@@ -253,7 +251,7 @@ class Transformers:
                     model_save_path = "model_checkpoint.pth"
                     print("save model")
                     self.save_model(model_save_path)
-            
+    
     def evaluate(self,model, loader, loss_fn):
         model.eval()
         losses = 0
@@ -269,7 +267,7 @@ class Transformers:
             losses += loss.item()
             
             preds = logits.argmax(dim=-1)
-            masked_pred = preds * (y!=2)
+            masked_pred = preds * (y!=0)
             accuracy = (masked_pred == y).float().mean()
             acc += accuracy.item()
             
