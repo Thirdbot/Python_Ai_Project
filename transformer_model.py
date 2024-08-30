@@ -176,7 +176,7 @@ class Transformers:
         count = 0
         if os.path.exists("model_checkpoint.pth"):
             self.transformer = self.load_model(path="model_checkpoint.pth")
-            
+
         with tqdm(zip(list_input,list_output), position=0, leave=True) as tbatch:
             for list_in,list_out in tbatch:
                 
@@ -186,15 +186,14 @@ class Transformers:
                 # print(f"list_in size: {len(list_in)} list_out size: {len(list_out)}")
                 #batch data again
                 #self.model.optimizer.zero_grad()
-                
-                
-                for list_inin, list_outout in zip(input_loader,output_loader):
-                    self.transformer.train()
-                    tbatch.set_description(f"Batch {count}")
 
-                    with tqdm(range(self.n_epochs), position=1, leave=True) as tepoch:
-                        for epochs in tepoch:
-                            start_time = time.time()
+                with tqdm(range(self.n_epochs), position=1, leave=True) as tepoch:
+                    for epochs in tepoch:
+                        start_time = time.time()
+            
+                        for list_inin, list_outout in zip(input_loader,output_loader):
+                            self.transformer.train()
+                            tbatch.set_description(f"Batch {count}")
 
                             tepoch.set_description(f"Epoch {epochs}")
                             list_inin = list_inin.cuda()
@@ -209,21 +208,21 @@ class Transformers:
 
 
                             self.optimizer.zero_grad()
-                            output = self.transformer(list_inin, list_outout[:, :-1])
+                            output = self.transformer(list_inin, list_outout)
                             #output = self.transformer(list_inin, list_outout)
 
                         
                             
                             # loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
-                            loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
+                            loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout.contiguous().view(-1))
 
                             loss.backward()
 
                             losses += loss.item()
 
                             preds = output.argmax(dim=-1)
-                            masked_pred = preds * (list_outout[:,1:]!=2)
-                            accuracy = (masked_pred == list_outout[:,1:]).float().mean()
+                            masked_pred = preds * (list_outout!=2)
+                            accuracy = (masked_pred == list_outout).float().mean()
                             acc += accuracy.item()
 
                             self.optimizer.step()
@@ -265,13 +264,13 @@ class Transformers:
         for x, y in tqdm(loader, position=0, leave=True):
             x = x.unsqueeze(0)
             y = y.unsqueeze(0)
-            logits = model(x, y[:, :-1])
-            loss = loss_fn(logits.contiguous().view(-1, self.tgt_vocab_size), y[:, 1:].contiguous().view(-1))
+            logits = model(x, y)
+            loss = loss_fn(logits.contiguous().view(-1, self.tgt_vocab_size), y.contiguous().view(-1))
             losses += loss.item()
             
             preds = logits.argmax(dim=-1)
-            masked_pred = preds * (y[:,1:]!=2)
-            accuracy = (masked_pred == y[:,1:]).float().mean()
+            masked_pred = preds * (y!=2)
+            accuracy = (masked_pred == y).float().mean()
             acc += accuracy.item()
             
             history_loss.append(loss.item())
