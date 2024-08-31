@@ -84,7 +84,7 @@ class Tokenization:
         # )
         
         #include whitespace in merging
-        #tokenizer.post_processor = processors.ByteLevel(trim_offsets=True)
+        tokenizer.post_processor = processors.BertProcessing(sep=("<|endoftext|>",2),cls=("[CLS]",1))
 
         #set merge word
         tokenizer.decoder = decoders.WordPiece(prefix="##")

@@ -34,7 +34,7 @@ class Transformers:
         self.word_size = 25063
         
         self.n_epochs = 100
-        self.batch = 16 #batch in this refer to batch for training
+        self.batch = 1 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
@@ -207,21 +207,21 @@ class Transformers:
                            
 
                             self.optimizer.zero_grad()
-                            output = self.transformer(list_inin, list_outout)
+                            output = self.transformer(list_inin, list_outout[:,:-1])
                             #output = self.transformer(list_inin, list_outout)
 
                         
                             
                             # loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
-                            loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout.contiguous().view(-1))
+                            loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
 
                             loss.backward()
 
                             losses += loss.item()
 
                             preds = output.argmax(dim=-1)
-                            masked_pred = preds * (list_outout!=0)
-                            accuracy = (masked_pred == list_outout).float().mean()
+                            masked_pred = preds * (list_outout[:, 1:]!=0)
+                            accuracy = (masked_pred == list_outout[:, 1:]).float().mean()
                             acc += accuracy.item()
 
                             self.optimizer.step()
@@ -262,13 +262,13 @@ class Transformers:
         for x, y in tqdm(loader, position=0, leave=True):
             x = x.unsqueeze(0)
             y = y.unsqueeze(0)
-            logits = model(x, y)
-            loss = loss_fn(logits.contiguous().view(-1, self.tgt_vocab_size), y.contiguous().view(-1))
+            logits = model(x, y[:,:-1])
+            loss = loss_fn(logits.contiguous().view(-1, self.tgt_vocab_size), y[:, 1:].contiguous().view(-1))
             losses += loss.item()
             
             preds = logits.argmax(dim=-1)
-            masked_pred = preds * (y!=0)
-            accuracy = (masked_pred == y).float().mean()
+            masked_pred = preds * (y[:, 1:]!=0)
+            accuracy = (masked_pred == y[:, 1:]).float().mean()
             acc += accuracy.item()
             
             history_loss.append(loss.item())

@@ -34,7 +34,7 @@ class Program:
         self.pad_size = 100
 
         self.data_fetch = {'files':{}}
-        self.run_train = True
+        self.run_train = False
         
 
         self.file_parquet = self.find_datasets(self.datapath,".feather")
