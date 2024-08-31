@@ -34,7 +34,7 @@ class Transformers:
         self.word_size = 52000
         
         self.n_epochs = 100
-        self.batch = 64 #batch in this refer to batch for training
+        self.batch = 1 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
@@ -87,7 +87,7 @@ class Transformers:
             #print(sentence)
             sentence = sentence.splitlines()
             embbed_sent = self.ListEmbeddings(sentence,100)
-            print(embbed_sent)
+            
             embbed_sent = embbed_sent.to("cuda")  # Ensure embeddings are on the correct device
             #print(embbed_sent.shape)
             # Initialize the tgt_data with start tokens, like    [CLS] or any start token you used during training
@@ -107,11 +107,14 @@ class Transformers:
                 if next_token.item() == 2:
                     break
 
-                # Decode the generated sequence
-                output_tokens = tgt_data.squeeze().tolist()
-                decoded_output = datasetss.decode(output_tokens)
-            print("output: ", decoded_output)
-
+            # Decode the generated sequence
+            output_tokens = tgt_data.squeeze().tolist()
+            decoded_output = datasetss.decode(output_tokens)
+            merged_output = self.merge_subword_tokens(decoded_output)
+            print("OUTPUT: ",end='')
+            for i in merged_output:
+                print(i,end='')
+            print("\n")
             # fig = plt.figure()
             # images = self.transformer.decoder_layers[0].cross_attn[0,...].cpu().detach().numpy().mean(axis=0)
 
@@ -128,7 +131,21 @@ class Transformers:
             # fig.colorbar(cax)
             # plt.show()  # Ensure the plot is displayed
 
-            
+    def merge_subword_tokens(self, decoded_sentences):
+        """Merge subword tokens in a list of decoded sentences."""
+        merged_sentences = []
+        for sentence in decoded_sentences:
+            words = []
+            for word in sentence.split():
+                if word.startswith("##"):
+                    if words:
+                        words[-1] += word[2:]  # Merge with the previous word
+                else:
+                    words.append(word)
+            merged_sentences.append(" ".join(words))
+            merged_sentences.append(" ")
+        return merged_sentences
+    
     def runtrain(self,inputs,outs):
         loss = self.feedmodel(inputs,outs)
         return loss
@@ -172,8 +189,8 @@ class Transformers:
         
         count = 0
 
-        if os.path.exists("model_checkpoint.pth"):
-            self.transformer = self.load_model(path="model_checkpoint.pth")
+        # if os.path.exists("model_checkpoint.pth"):
+        #     self.transformer = self.load_model(path="model_checkpoint.pth")
 
 
         with tqdm(zip(list_input,list_output), position=1, leave=True) as tbatch:
