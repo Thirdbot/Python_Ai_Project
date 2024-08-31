@@ -22,26 +22,26 @@ class Transformers:
     def __init__(self) -> None:
         super().__init__()
         #its an attention of srcand tgt size that interpret so word_size need to be same as vocabb_size
-        self.src_vocab_size = 25063
-        self.tgt_vocab_size = 25063
+        self.src_vocab_size = 52000
+        self.tgt_vocab_size = 52000
         self.d_model = 768
         self.num_heads = 8
         self.num_layers = 6
         self.d_ff = 2048
         # max_seq_length = 100
         self.dropout = 0.1
-        self.lr = 0.00001
-        self.word_size = 25063
+        self.lr = 0.0001
+        self.word_size = 52000
         
         self.n_epochs = 100
-        self.batch = 1 #batch in this refer to batch for training
+        self.batch = 64 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
         self.criterion = nn.CrossEntropyLoss(ignore_index=0)
         self.optimizer = torch.optim.Adam(self.transformer.parameters(), lr=self.lr, betas=(0.9, 0.98), eps=1e-9)
 
-        
+        self.generator = torch.Generator(device='cuda')
 
         
     def load_model(self, path):
@@ -83,8 +83,10 @@ class Transformers:
             sentence = input("You: ")
             if sentence.lower() == "quit":
                 break
+            
             #print(sentence)
-            embbed_sent = self.ListEmbeddings([sentence],100)
+            sentence = sentence.splitlines()
+            embbed_sent = self.ListEmbeddings(sentence,100)
             print(embbed_sent)
             embbed_sent = embbed_sent.to("cuda")  # Ensure embeddings are on the correct device
             #print(embbed_sent.shape)
@@ -167,8 +169,9 @@ class Transformers:
     # size = 0
 
                 
-        generator = torch.Generator(device='cuda')
+        
         count = 0
+
         if os.path.exists("model_checkpoint.pth"):
             self.transformer = self.load_model(path="model_checkpoint.pth")
 
@@ -176,8 +179,8 @@ class Transformers:
         with tqdm(zip(list_input,list_output), position=1, leave=True) as tbatch:
             for list_in,list_out in tbatch:
         
-                input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=0,shuffle=True,generator=generator)
-                output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=0,shuffle=True,generator=generator)
+                input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=0,shuffle=False,generator=self.generator)
+                output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=0,shuffle=False,generator=self.generator)
 
         # print(f"list_in size: {len(list_in)} list_out size: {len(list_out)}")
         #batch data again
@@ -187,12 +190,12 @@ class Transformers:
                 for list_inin, list_outout in zip(input_loader,output_loader):
                     self.transformer.train()
                     count += 1
-                    tbatch.set_description(f"Batch {count}")
-                    print(f"\tlist_inin size: {list_inin.shape} list_outout size: {list_outout.shape}")
-                    print(list_inin,list_outout)
+                    tbatch.set_description(f"Batch step{count}")
+                    #print(f"\tlist_inin size: {list_inin.shape} list_outout size: {list_outout.shape}")
+                    #print(list_inin,list_outout)
                     # print(src_data,tgt_data)
                     qdecode = datasetss.decode(list_inin)
-                    adecode = datasetss.decode(list_outout)
+                    adecode = datasetss.decode(list_outout[:,:-1])
                     print(f"Question: {qdecode}\nAnswer{adecode}")
 
                     
@@ -241,7 +244,8 @@ class Transformers:
         
 
                     end_time = time.time()
-                    val_loss, val_acc, hist_loss, hist_acc = self.evaluate(self.transformer, zip(list_inin, list_outout), self.criterion)
+
+                    val_loss, val_acc, hist_loss, hist_acc = self.evaluate(self.transformer,zip(list_inin,list_outout), self.criterion)
                     # history['eval_loss'] += hist_loss
                     # history['eval_acc'] += hist_acc
                     tbatch.set_postfix(trainloss=train_loss, trainaccuracy=train_acc,val_loss=val_loss,val_acc=val_acc)
@@ -253,28 +257,37 @@ class Transformers:
                     self.save_model(model_save_path)
     
     def evaluate(self,model, loader, loss_fn):
-        model.eval()
+       
         losses = 0
         acc = 0
         history_loss = []
-        history_acc = [] 
+        history_acc = []
+       # data = zip(valid_in,valid_out)
+        with tqdm(loader, position=1, leave=True) as tbatch:
+            model.eval()
+            for x,y in tbatch:
+        
+                # input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=0,shuffle=True,generator=self.generator)
+                # output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=0,shuffle=True,generator=self.generator)
 
-        for x, y in tqdm(loader, position=0, leave=True):
-            x = x.unsqueeze(0)
-            y = y.unsqueeze(0)
-            logits = model(x, y[:,:-1])
-            loss = loss_fn(logits.contiguous().view(-1, self.tgt_vocab_size), y[:, 1:].contiguous().view(-1))
-            losses += loss.item()
-            
-            preds = logits.argmax(dim=-1)
-            masked_pred = preds * (y[:, 1:]!=0)
-            accuracy = (masked_pred == y[:, 1:]).float().mean()
-            acc += accuracy.item()
-            
-            history_loss.append(loss.item())
-            history_acc.append(accuracy.item())
+                # for x, y in zip(input_loader,output_loader):
+                    
+                x = x.unsqueeze(0)
+                y = y.unsqueeze(0)
+                logits = model(x, y[:,:-1])
 
-        return losses / len(y), acc / len(y), history_loss, history_acc
+                loss = loss_fn(logits.contiguous().view(-1, self.tgt_vocab_size), y[:, 1:].contiguous().view(-1))
+                losses += loss.item()
+                
+                preds = logits.argmax(dim=-1)
+                masked_pred = preds * (y[:, 1:]!=0)
+                accuracy = (masked_pred == y[:, 1:]).float().mean()
+                acc += accuracy.item()
+                
+                history_loss.append(loss.item())
+                history_acc.append(accuracy.item())
+
+                return losses/len(y) , acc/len(y) , history_loss, history_acc
 
                     
                 #     size += len(list_inin)

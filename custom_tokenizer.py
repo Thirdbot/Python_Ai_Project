@@ -45,9 +45,9 @@ class Tokenization:
 
         #word piece
         #specials tokens defined
-        special_tokens = ["[PAD]", "[CLS]","<|endoftext|>"]
+        special_tokens =["[PAD]", "[CLS]", "[SEP]", "[UNK]", "[MASK]"]
         #set trainers with special token seperately
-        trainer = trainers.WordPieceTrainer(vocab_size=25000, special_tokens=special_tokens)
+        trainer = trainers.WordPieceTrainer(vocab_size=52000, special_tokens=special_tokens)
         
         #byte pair
         #set trainers with one special tokens at the end
@@ -84,10 +84,10 @@ class Tokenization:
         # )
         
         #include whitespace in merging
-        tokenizer.post_processor = processors.BertProcessing(sep=("<|endoftext|>",2),cls=("[CLS]",1))
+        tokenizer.post_processor = processors.BertProcessing(sep=("[SEP]",2),cls=("[CLS]",1))
 
         #set merge word
-        tokenizer.decoder = decoders.WordPiece(prefix="##")
+        tokenizer.decoder = decoders.WordPiece(prefix="##",cleanup=True)
         #tokenizer.decoder = decoders.ByteLevel()
         #save tokenizer
         tokenizer.save("tokenizer.json")

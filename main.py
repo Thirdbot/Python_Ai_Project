@@ -30,7 +30,7 @@ class Program:
         
         
         self.datapath = "datasets"
-        self.batch = 32  #batch size in this refer to bbatch in save files mean 32 batch for n times
+        self.batch = 128  #batch size in this refer to bbatch in save files mean 32 batch for n times
         self.pad_size = 100
 
         self.data_fetch = {'files':{}}
@@ -58,6 +58,8 @@ class Program:
                         print("couple: ",couple)
                         self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                         self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
+                        # self.tinputs = self.soupDatasets(data_path,couple[0],'test',self.make_file)
+                        # self.toutputs = self.soupDatasets(data_path,couple[1],'test',self.make_file)
                         transformer_model.runtrain(self.inputs,self.outputs)
                         #self.embedded(arr=self.inputs)
                         
@@ -67,7 +69,7 @@ class Program:
                     count += 1
             if os.path.exists("model_checkpoint.pth"):
                 output = transformer_model.test_input()
-                
+            
         
     # def embedded(self,arr):
     #     embed = nn.Embedding(100,128).to("cuda")

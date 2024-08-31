@@ -227,7 +227,7 @@ class Datasets:
             rowcount += len(data[label])
 
             q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding=True,max_length=max_length,
-                                                            truncation=False,add_special_tokens = True,
+                                                            truncation=True,add_special_tokens = True,
                                                             return_attention_mask = True, return_tensors='pt')
             
             q_inputs_tensor_id = q_encode['input_ids'].cuda()
@@ -304,7 +304,7 @@ class Datasets:
 
 
     def decode(self,encode):
-        return self.set_tokenizer.batch_decode(encode)
+        return self.set_tokenizer.batch_decode(encode,skip_special_tokens=True,clean_up_tokenization_spaces=True)
         
 if __name__ == "__main__":
     datasets = Datasets()
