@@ -202,15 +202,17 @@ class Transformers:
         
         
                 for list_inin, list_outout in zip(input_loader,output_loader):
+
+
                     self.transformer.train()
                     count += 1
                     tbatch.set_description(f"Batch step{count}")
                     #print(f"\tlist_inin size: {list_inin.shape} list_outout size: {list_outout.shape}")
                     #print(list_inin,list_outout)
                     # print(src_data,tgt_data)
-                    # qdecode = datasetss.decode(list_inin)
-                    # adecode = datasetss.decode(list_outout[:,:-1])
-                    # print(f"\nQuestion: {qdecode}\nAnswer{adecode}")
+                    qdecode = datasetss.decode(list_inin)
+                    adecode = datasetss.decode(list_outout[:,:-1])
+                    print(f"\nQuestion: {qdecode}\nAnswer{adecode}")
 
                     
 
@@ -225,7 +227,7 @@ class Transformers:
                             list_inin = list_inin.cuda()
                             list_outout = list_outout.cuda()
 
-                           
+                           ####implement dppo for data linked between labels or datasets input model (multimodal)
 
                             self.optimizer.zero_grad()
                             output = self.transformer(list_inin[:, :-1], list_outout[:,:-1])
