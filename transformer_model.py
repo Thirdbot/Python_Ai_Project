@@ -24,22 +24,22 @@ class Transformers:
         #its an attention of srcand tgt size that interpret so word_size need to be same as vocabb_size
         self.src_vocab_size = 52000
         self.tgt_vocab_size = 52000
-        self.d_model = 768
-        self.num_heads = 16
-        self.num_layers = 6
-        self.d_ff = 4096
+        self.d_model = 512
+        self.num_heads = 8
+        self.num_layers = 12
+        self.d_ff = 2048
         # max_seq_length = 100
         self.dropout = 0.1
-        self.lr = 0.0001
+        self.lr = 0.00001
         self.word_size = 52000
         
-        self.n_epochs = 100
-        self.batch = 32 #batch in this refer to batch for training
+        self.n_epochs = 300
+        self.batch = 1 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
         self.criterion = nn.CrossEntropyLoss(ignore_index=0)
-        self.optimizer = torch.optim.Adam(self.transformer.parameters(), lr=self.lr, betas=(0.9, 0.999), eps=1e-9)
+        self.optimizer = torch.optim.Adam(self.transformer.parameters(), lr=self.lr, betas=(0.9, 0.999), eps=1e-8)
 
         self.generator = torch.Generator(device='cuda')
 
@@ -188,8 +188,8 @@ class Transformers:
         count = 0
 
         #load between datasets
-        if os.path.exists("model_checkpoint.pth"):
-            self.transformer = self.load_model(path="model_checkpoint.pth")
+        # if os.path.exists("model_checkpoint.pth"):
+        #     self.transformer = self.load_model(path="model_checkpoint.pth")
 
 
         with tqdm(zip(list_input,list_output), position=1, leave=True) as tbatch:
