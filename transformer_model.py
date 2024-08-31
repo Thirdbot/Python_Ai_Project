@@ -34,7 +34,7 @@ class Transformers:
         self.word_size = 52000
         
         self.n_epochs = 100
-        self.batch = 1 #batch in this refer to batch for training
+        self.batch = 64 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
@@ -171,10 +171,7 @@ class Transformers:
     def feedmodel(self,list_input,list_output):
           
        
-        losses = 0
-        acc = 0
-        history_loss = []
-        history_acc = []
+       
         
 
         # src_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
@@ -211,13 +208,17 @@ class Transformers:
                     #print(f"\tlist_inin size: {list_inin.shape} list_outout size: {list_outout.shape}")
                     #print(list_inin,list_outout)
                     # print(src_data,tgt_data)
-                    qdecode = datasetss.decode(list_inin)
-                    adecode = datasetss.decode(list_outout[:,:-1])
-                    print(f"Question: {qdecode}\nAnswer{adecode}")
+                    # qdecode = datasetss.decode(list_inin)
+                    # adecode = datasetss.decode(list_outout[:,:-1])
+                    # print(f"\nQuestion: {qdecode}\nAnswer{adecode}")
 
                     
 
                     with tqdm(range(self.n_epochs), position=0, leave=True) as tepoch:
+                        losses = 0
+                        acc = 0
+                        history_loss = []
+                        history_acc = []
                         for epochs in tepoch:
                             start_time = time.time()  
                             tepoch.set_description(f"Epoch {epochs}")
@@ -227,7 +228,7 @@ class Transformers:
                            
 
                             self.optimizer.zero_grad()
-                            output = self.transformer(list_inin, list_outout[:,:-1])
+                            output = self.transformer(list_inin[:, :-1], list_outout[:,:-1])
                             #output = self.transformer(list_inin, list_outout)
 
                         
@@ -291,7 +292,7 @@ class Transformers:
                     
                 x = x.unsqueeze(0)
                 y = y.unsqueeze(0)
-                logits = model(x, y[:,:-1])
+                logits = model(x[:, :-1], y[:,:-1])
 
                 loss = loss_fn(logits.contiguous().view(-1, self.tgt_vocab_size), y[:, 1:].contiguous().view(-1))
                 losses += loss.item()
