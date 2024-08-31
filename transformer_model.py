@@ -25,21 +25,21 @@ class Transformers:
         self.src_vocab_size = 52000
         self.tgt_vocab_size = 52000
         self.d_model = 768
-        self.num_heads = 8
+        self.num_heads = 16
         self.num_layers = 6
-        self.d_ff = 2048
+        self.d_ff = 4096
         # max_seq_length = 100
         self.dropout = 0.1
         self.lr = 0.0001
         self.word_size = 52000
         
         self.n_epochs = 100
-        self.batch = 64 #batch in this refer to batch for training
+        self.batch = 32 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
         self.criterion = nn.CrossEntropyLoss(ignore_index=0)
-        self.optimizer = torch.optim.Adam(self.transformer.parameters(), lr=self.lr, betas=(0.9, 0.98), eps=1e-9)
+        self.optimizer = torch.optim.Adam(self.transformer.parameters(), lr=self.lr, betas=(0.9, 0.999), eps=1e-9)
 
         self.generator = torch.Generator(device='cuda')
 
@@ -76,7 +76,7 @@ class Transformers:
     def test_input(self):
         file = "model_checkpoint.pth"
         self.transformer = self.load_model(file)
-        self.transformer.eval()  # Set model to evaluation mode
+        
         datasetss = Datasets()
         empty = ''
         while True:
@@ -95,6 +95,7 @@ class Transformers:
             for i in range(1, 100):  # Assuming max length 100
                 
                 with torch.no_grad():
+                    self.transformer.eval()  # Set model to evaluation mode
                     output = self.transformer(embbed_sent, tgt_data)
                 
                 # Get the most likely next token
@@ -186,8 +187,9 @@ class Transformers:
         
         count = 0
 
-        # if os.path.exists("model_checkpoint.pth"):
-        #     self.transformer = self.load_model(path="model_checkpoint.pth")
+        #load between datasets
+        if os.path.exists("model_checkpoint.pth"):
+            self.transformer = self.load_model(path="model_checkpoint.pth")
 
 
         with tqdm(zip(list_input,list_output), position=1, leave=True) as tbatch:
@@ -210,7 +212,7 @@ class Transformers:
                     #print(f"\tlist_inin size: {list_inin.shape} list_outout size: {list_outout.shape}")
                     #print(list_inin,list_outout)
                     # print(src_data,tgt_data)
-                    qdecode = datasetss.decode(list_inin)
+                    qdecode = datasetss.decode(list_inin[:,:-1])
                     adecode = datasetss.decode(list_outout[:,:-1])
                     print(f"\nQuestion: {qdecode}\nAnswer{adecode}")
 
