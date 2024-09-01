@@ -33,7 +33,7 @@ class Transformers:
         self.lr = 0.0001
         self.word_size = 52000
         
-        self.n_epochs = 100
+        self.n_epochs = 500
         self.batch = 32 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
@@ -228,7 +228,7 @@ class Transformers:
                 #     print(f"\nQuestion: {qdecode}\nAnswer{adecode}")
         return input_loader,output_loader
 
-    def runtrain(self,list_input,list_output):
+    def runtrain(self,list_input,list_output,test_input,test_output):
         # src_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
         # tgt_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
         
@@ -239,42 +239,41 @@ class Transformers:
         #     self.transformer = self.load_model(path="model_checkpoint.pth")
         datasetss = Datasets()
         
+        i,o = self.batch_sample(list_input,list_output)
+        ti,to = self.batch_sample(test_input,test_output)
 
-        with tqdm(range(1,self.n_epochs+1), position=1, leave=False) as tepoch:
-            
-            history_loss = []
-            history_acc = []
+        
+        with tqdm(zip(i,o), position=1, leave=True) as tbatch:
+            count = 0
+            for list_inin,list_outout in tbatch:
+                count += 1
+                tbatch.set_description(f"Batch step{count}")
 
-            i,o = self.batch_sample(list_input,list_output)
-            for epochs in tepoch:
-                start_time = time.time()  
-              
+                list_inin = list_inin.cuda()
+                list_outout = list_outout.cuda()
+
+                # qdecode = datasetss.decode(list_inin[:,:-1])
+                # adecode = datasetss.decode(list_outout[:,:-1])
+                # print(f"\nQuestion: {qdecode}\nAnswer{adecode}\n")
+                with tqdm(range(1,self.n_epochs+1), position=0, leave=True) as tepoch:
+                    
+                    for epochs in tepoch:
+                        start_time = time.time()  
+                        tepoch.set_description(f"Epoch {epochs}")
+                        ####implement dppo for data linked between labels or datasets input model (multimodal)
+                        
+                        transformer.train()
+                        self.optimizer.zero_grad()
+                        
+                        
+                        losses = 0
+                        acc = 0
+                        history_loss = []
+                        history_acc = []
                 
-
-                ####implement dppo for data linked between labels or datasets input model (multimodal)
-                
-                transformer.train()
-                self.optimizer.zero_grad()
-                
-                count = 0
-                losses = 0
-                acc = 0
-                with tqdm(zip(i,o), position=0, leave=True) as tbatch:
-                    for list_inin,list_outout in tbatch:
-                        count += 1
-                        tbatch.set_description(f"Batch step{count}")
-
-                        list_inin = list_inin.cuda()
-                        list_outout = list_outout.cuda()
-
-                        # qdecode = datasetss.decode(list_inin[:,:-1])
-                        # adecode = datasetss.decode(list_outout[:,:-1])
-                        # print(f"\nQuestion: {qdecode}\nAnswer{adecode}\n")
                         output,_ = transformer(list_inin, list_outout[:,:-1],cache=None)
                         #output = self.transformer(list_inin, list_outout)
 
-                    
-                        
                         # loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
                     
                         loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
@@ -300,11 +299,13 @@ class Transformers:
 
                     #fine tune whole datasets of batches file
                     self.fine_tune(self.transformer,i.dataset,o.dataset,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+                    self.fine_tune(self.transformer,ti.dataset,to.dataset,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+
                     #loss,acc of whole batch
                     val_loss, val_acc, hist_loss, hist_acc = self.evaluate(transformer,i.dataset,o.dataset, self.criterion)
 
-                    tepoch.set_description(f"Epoch {epochs}")
-                    tepoch.set_postfix(trainloss=train_loss, trainaccuracy=train_acc,val_loss=val_loss,val_acc=val_acc)
+                    
+                    tbatch.set_postfix(trainloss=train_loss, trainaccuracy=train_acc,val_loss=val_loss,val_acc=val_acc)
                     
                    # print((f"\nEpoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s\n"))
 
