@@ -34,7 +34,7 @@ class Program:
         self.pad_size = 100
 
         self.data_fetch = {'files':{}}
-        self.run_train = True
+        self.run_train = False
 
         
 
@@ -69,7 +69,7 @@ class Program:
 
                     count += 1
             if os.path.exists("model_checkpoint.pth"):
-                output = transformer_model.test_input()
+                output = transformer_model.interference()
             
         
     # def embedded(self,arr):

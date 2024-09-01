@@ -35,14 +35,21 @@ class MultiHeadAttention(nn.Module):
         batch_size, _, seq_length, d_k = x.size()
         return x.transpose(1, 2).contiguous().view(batch_size, seq_length, self.d_model)
         
-    def forward(self, Q, K, V, mask=None):
+    def forward(self, Q, K=None, V=None, mask=None, cache=None):
+        if cache is not None:
+            K = torch.cat([cache['k'], self.split_heads(self.W_k(K))], dim=2)
+            V = torch.cat([cache['v'], self.split_heads(self.W_v(V))], dim=2)
+        else:
+            K = self.split_heads(self.W_k(K))
+            V = self.split_heads(self.W_v(V))
+
         Q = self.split_heads(self.W_q(Q))
-        K = self.split_heads(self.W_k(K))
-        V = self.split_heads(self.W_v(V))
         
         attn_output = self.scaled_dot_product_attention(Q, K, V, mask)
         output = self.W_o(self.combine_heads(attn_output))
-        return output
+
+        # Save key and value for caching
+        return output, {'k': K, 'v': V}
     
 class PositionWiseFeedForward(nn.Module):
     def __init__(self, d_model, d_ff):
@@ -80,7 +87,7 @@ class EncoderLayer(nn.Module):
         self.dropout = nn.Dropout(dropout)
         
     def forward(self, x, mask):
-        attn_output = self.self_attn(x, x, x, mask)
+        attn_output,_ = self.self_attn(x, x, x, mask)
         x = self.norm1(x + self.dropout(attn_output))
         ff_output = self.feed_forward(x)
         x = self.norm2(x + self.dropout(ff_output))
@@ -97,14 +104,14 @@ class DecoderLayer(nn.Module):
         self.norm3 = nn.LayerNorm(d_model)
         self.dropout = nn.Dropout(dropout)
         
-    def forward(self, x, enc_output, src_mask, tgt_mask):
-        attn_output = self.self_attn(x, x, x, tgt_mask)
+    def forward(self, x, enc_output, src_mask, tgt_mask,cache=None):
+        attn_output, new_cache = self.self_attn(x, x, x, tgt_mask, cache=cache)
         x = self.norm1(x + self.dropout(attn_output))
-        attn_output = self.cross_attn(x, enc_output, enc_output, src_mask)
+        attn_output, _ = self.cross_attn(x, enc_output, enc_output, src_mask)
         x = self.norm2(x + self.dropout(attn_output))
         ff_output = self.feed_forward(x)
         x = self.norm3(x + self.dropout(ff_output))
-        return x
+        return x, new_cache
 
 class Transformer(nn.Module):
     def __init__(self, src_vocab_size, tgt_vocab_size, d_model, num_heads, num_layers, d_ff, max_seq_length, dropout):
@@ -131,7 +138,7 @@ class Transformer(nn.Module):
         tgt_mask = tgt_mask & nopeak_mask
         return src_mask, tgt_mask
 
-    def forward(self, src, tgt):
+    def forward(self, src, tgt, cache=None):
         src_mask, tgt_mask = self.generate_mask(src, tgt)
 
         embeded_src = self.encoder_embedding(src).float()
@@ -149,11 +156,12 @@ class Transformer(nn.Module):
             enc_output = enc_layer(enc_output, src_mask)
 
         dec_output = tgt_embedded
-        for dec_layer in self.decoder_layers:
-            dec_output = dec_layer(dec_output, enc_output, src_mask, tgt_mask)
-
+        new_caches = []
+        for i, dec_layer in enumerate(self.decoder_layers):
+            dec_output, new_cache = dec_layer(dec_output, enc_output, src_mask,tgt_mask,cache=cache[i] if cache else None)
+            new_caches.append(new_cache)
         output = self.fc(dec_output)
-        return output
+        return output, new_caches
     
 
 

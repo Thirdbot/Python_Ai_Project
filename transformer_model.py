@@ -24,9 +24,9 @@ class Transformers:
         #its an attention of srcand tgt size that interpret so word_size need to be same as vocabb_size
         self.src_vocab_size = 52000
         self.tgt_vocab_size = 52000
-        self.d_model = 512
-        self.num_heads = 8
-        self.num_layers = 12
+        self.d_model = 768
+        self.num_heads = 16
+        self.num_layers = 8
         self.d_ff = 2048
         # max_seq_length = 100
         self.dropout = 0.1
@@ -39,7 +39,7 @@ class Transformers:
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
         self.criterion = nn.CrossEntropyLoss(ignore_index=0)
-        self.optimizer = torch.optim.Adam(self.transformer.parameters(), lr=self.lr, betas=(0.9, 0.999), eps=1e-8)
+        self.optimizer = torch.optim.Adam(self.transformer.parameters(), lr=self.lr, betas=(0.9, 0.98), eps=1e-9)
 
         self.generator = torch.Generator(device='cuda')
 
@@ -73,12 +73,27 @@ class Transformers:
         }, path)
         #print(f'Model saved to {path}')
 
-    def test_input(self):
+    def generate(self,model, src, max_length):
+        src = src.to('cuda')
+        model.eval()
+        
+        #tgt = torch.zeros((1, 1)).long().to('cuda')  
+        tgt = torch.zeros(src.shape[0], 1, dtype=torch.long).to("cuda")
+        cache = [None] * len(model.decoder_layers)
+        
+        for i in range(max_length):
+            output, cache = model(src, tgt[:, -1:], cache=cache)
+            next_token = output[:, -1, :].argmax(dim=-1, keepdim=True)
+            tgt = torch.cat([tgt, next_token], dim=1)
+            if next_token.item() == 2:  # assuming 2 is the end token
+                break
+        
+        return tgt
+    def interference(self):
         file = "model_checkpoint.pth"
         self.transformer = self.load_model(file)
         
         datasetss = Datasets()
-        empty = ''
         while True:
             sentence = input("You: ")
             if sentence.lower() == "quit":
@@ -89,24 +104,27 @@ class Transformers:
             embbed_sent = self.ListEmbeddings(sentence,100)
             
             embbed_sent = embbed_sent.to("cuda")  # Ensure embeddings are on the correct device
-            #print(embbed_sent.shape)
-            # Initialize the tgt_data with start tokens, like    [CLS] or any start token you used during training
-            tgt_data = torch.ones(embbed_sent.shape[0], 1, dtype=torch.long).to("cuda")
-            for i in range(1, 100):  # Assuming max length 100
-                
-                with torch.no_grad():
-                    self.transformer.eval()  # Set model to evaluation mode
-                    output = self.transformer(embbed_sent, tgt_data)
-                
-                # Get the most likely next token
-                next_token = output[:, -1, :].argmax(dim=-1, keepdim=True)
+            tgt_data = self.generate(self.transformer,embbed_sent,100)
 
-                # Append the predicted token to the target sequence
-                tgt_data = torch.cat((tgt_data, next_token), dim=1)
+            # tgt_data = torch.zeros(embbed_sent.shape[0], 1, dtype=torch.long).to("cuda")
+            # #tgt_data = torch.zeros((1, 1)).long().to('cuda')
+            # cache = [None] * len(self.transformer.decoder_layers)
+            # for i in range(1, 100):  # Assuming max length 100
+                
+            #     with torch.no_grad():
+            #         self.transformer.eval()  # Set model to evaluation mode
+                    
+            #         output,cache  = self.transformer(embbed_sent, tgt_data,cache=cache)
 
-                # Stop if the model predicts the end token 2 is end token
-                if next_token.item() == 2:
-                    break
+            #         # Get the most likely next token
+            #         next_token = output[:, -1, :].argmax(dim=-1, keepdim=True)
+
+            #         # Append the predicted token to the target sequence
+            #         tgt_data = torch.cat([tgt_data, next_token], dim=1)
+
+            #         # Stop if the model predicts the end token 2 is end token
+            #         if next_token.item() == 2:
+            #             break
 
             # Decode the generated sequence
             output_tokens = tgt_data.squeeze().tolist()
@@ -170,27 +188,15 @@ class Transformers:
     
     
     def feedmodel(self,list_input,list_output):
-          
-       
-       
-        
-
         # src_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
         # tgt_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
         datasetss = Datasets()
-        
-        #for epochs in tqdm(range(self.n_epochs),desc="EPOCHS:",leave=False):
     
-    # size = 0
-
-                
-        
         count = 0
 
         #load between datasets
         # if os.path.exists("model_checkpoint.pth"):
         #     self.transformer = self.load_model(path="model_checkpoint.pth")
-
 
         with tqdm(zip(list_input,list_output), position=1, leave=True) as tbatch:
             for list_in,list_out in tbatch:
@@ -206,7 +212,7 @@ class Transformers:
                 for list_inin, list_outout in zip(input_loader,output_loader):
 
 
-                    self.transformer.train()
+                    
                     count += 1
                     tbatch.set_description(f"Batch step{count}")
                     #print(f"\tlist_inin size: {list_inin.shape} list_outout size: {list_outout.shape}")
@@ -217,7 +223,7 @@ class Transformers:
                     print(f"\nQuestion: {qdecode}\nAnswer{adecode}")
 
                     
-
+                    
                     with tqdm(range(self.n_epochs), position=0, leave=True) as tepoch:
                         losses = 0
                         acc = 0
@@ -230,9 +236,9 @@ class Transformers:
                             list_outout = list_outout.cuda()
 
                            ####implement dppo for data linked between labels or datasets input model (multimodal)
-
+                            self.transformer.train()
                             self.optimizer.zero_grad()
-                            output = self.transformer(list_inin[:, :-1], list_outout[:,:-1])
+                            output,_ = self.transformer(list_inin, list_outout[:,:-1],cache=None)
                             #output = self.transformer(list_inin, list_outout)
 
                         
@@ -277,7 +283,26 @@ class Transformers:
                     model_save_path = "model_checkpoint.pth"
                     print("save model")
                     self.save_model(model_save_path)
-    
+
+    def fine_tune(self,data_loader, optimizer, criterion, num_epochs):
+        self.transformer.train()
+        for epoch in range(num_epochs):
+            total_loss = 0
+            for src, tgt in data_loader:
+                self.optimizer.zero_grad()
+                
+                # Forward pass
+                output, _ = self.transformer(src, tgt, cache=None)  # No caching during training
+                
+                # Compute loss
+                loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), tgt[:, 1:].contiguous().view(-1))
+                total_loss += loss.item()
+                
+                # Backward pass and optimization
+                loss.backward()
+                optimizer.step()
+            print(f'Epoch {epoch + 1}/{num_epochs}, Loss: {total_loss / len(data_loader)}')
+
     def evaluate(self,model, loader, loss_fn):
        
         losses = 0
@@ -296,7 +321,7 @@ class Transformers:
                     
                 x = x.unsqueeze(0)
                 y = y.unsqueeze(0)
-                logits = model(x[:, :-1], y[:,:-1])
+                logits,_ = model(x, y[:,:-1])
 
                 loss = loss_fn(logits.contiguous().view(-1, self.tgt_vocab_size), y[:, 1:].contiguous().view(-1))
                 losses += loss.item()
