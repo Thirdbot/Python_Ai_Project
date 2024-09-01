@@ -34,12 +34,12 @@ class Transformers:
         self.word_size = 52000
         
         self.n_epochs = 300
-        self.batch = 16 #batch in this refer to batch for training
+        self.batch = 1 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
         self.criterion = nn.CrossEntropyLoss(ignore_index=0)
-        self.optimizer = torch.optim.Adam(self.transformer.parameters(), lr=self.lr, betas=(0.9, 0.98), eps=1e-9)
+        self.optimizer = torch.optim.Adam(self.transformer.parameters(), lr=self.lr, betas=(0.9, 0.999), eps=1e-8)
 
         self.generator = torch.Generator(device='cuda')
 
@@ -223,8 +223,9 @@ class Transformers:
                         acc = 0
                         history_loss = []
                         history_acc = []
+
                         for epochs in tepoch:
-                            start_time = time.time()  
+                            # start_time = time.time()  
                             tepoch.set_description(f"Epoch {epochs}")
                             list_inin = list_inin.cuda()
                             list_outout = list_outout.cuda()
@@ -258,15 +259,7 @@ class Transformers:
 
                     train_loss, train_acc, hist_loss, hist_acc = losses / len(list_outout), acc / len(list_outout), history_loss, history_acc
 
-        # history['train_loss'] += hist_loss
-        # history['train_acc'] += hist_acc
-
-
-        
-        #print(f"Epoch: {epochs+1}, Loss: {loss.item()}")
-        
-
-                    end_time = time.time()
+                    # end_time = time.time()
 
                     val_loss, val_acc, hist_loss, hist_acc = self.evaluate(self.transformer,zip(list_inin,list_outout), self.criterion)
                     # history['eval_loss'] += hist_loss
@@ -275,19 +268,25 @@ class Transformers:
                     
                     #print((f"Epoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s"))
 
-                    model_save_path = "model_checkpoint.pth"
-                    print("save model")
-                    self.save_model(model_save_path)
+                self.fine_tune(self.transformer,data_loader=zip(input_loader,output_loader),optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
 
-    def fine_tune(self,data_loader, optimizer, criterion, num_epochs):
-        self.transformer.train()
+                model_save_path = "model_checkpoint.pth"
+                print("save model")
+                self.save_model(model_save_path)
+
+    def fine_tune(self,model,data_loader, optimizer, criterion, num_epochs):
+        model.train()
+
         for epoch in range(num_epochs):
             total_loss = 0
             for src, tgt in data_loader:
+                src = src.unsqueeze(0)
+                tgt = tgt.unsqueeze(0)
+
                 self.optimizer.zero_grad()
                 
                 # Forward pass
-                output, _ = self.transformer(src, tgt, cache=None)  # No caching during training
+                output, _ = model(src, tgt[:,:-1], cache=None)  # No caching during training
                 
                 # Compute loss
                 loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), tgt[:, 1:].contiguous().view(-1))
@@ -296,7 +295,7 @@ class Transformers:
                 # Backward pass and optimization
                 loss.backward()
                 optimizer.step()
-            print(f'Epoch {epoch + 1}/{num_epochs}, Loss: {total_loss / len(data_loader)}')
+                print(f'\nEpoch {epoch + 1}/{num_epochs}, Loss: {total_loss / len(tgt)}')
 
     def evaluate(self,model, loader, loss_fn):
        
