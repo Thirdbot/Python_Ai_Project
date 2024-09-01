@@ -25,21 +25,21 @@ class Transformers:
         self.src_vocab_size = 52000
         self.tgt_vocab_size = 52000
         self.d_model = 768
-        self.num_heads = 8
+        self.num_heads = 16
         self.num_layers = 6
         self.d_ff = 2048
         # max_seq_length = 100
         self.dropout = 0.1
-        self.lr = 0.00001
+        self.lr = 0.0001
         self.word_size = 52000
         
         self.n_epochs = 100
-        self.batch = 32 #batch in this refer to batch for training
+        self.batch = 8 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
         self.criterion = nn.CrossEntropyLoss(ignore_index=0)
-        self.optimizer = torch.optim.Adam(self.transformer.parameters(), lr=self.lr, betas=(0.9, 0.999), eps=1e-8)
+        self.optimizer = torch.optim.Adam(self.transformer.parameters(), lr=self.lr, betas=(0.9, 0.98), eps=1e-9)
 
         self.generator = torch.Generator(device='cuda')
 
@@ -245,6 +245,7 @@ class Transformers:
                     
                         
                         # loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
+                    
                         loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
 
                         loss.backward()
@@ -259,12 +260,13 @@ class Transformers:
                         self.optimizer.step()
                         #tepoch.set_postfix(loss=loss.item(), accuracy=100. * accuracy.item())
 
-                        train_loss, train_acc, hist_loss, hist_acc = losses / len(list_outout), acc / len(list_outout), history_loss, history_acc
+                    train_loss, train_acc, hist_loss, hist_acc = losses / len(o), acc / len(o), history_loss, history_acc
 
                     print("\nSize: ",count)
+
                     end_time = time.time()
 
-                    val_loss, val_acc, hist_loss, hist_acc = self.evaluate(transformer,zip(list_inin,list_outout), self.criterion)
+                    val_loss, val_acc, hist_loss, hist_acc = self.evaluate(transformer,i,o, self.criterion)
 
                     tepoch.set_description(f"Epoch {epochs}")
                     tepoch.set_postfix(trainloss=train_loss, trainaccuracy=train_acc,val_loss=val_loss,val_acc=val_acc)
@@ -305,24 +307,25 @@ class Transformers:
     #             optimizer.step()
     #         print(f'\nEpoch {epoch + 1}/{num_epochs}, Loss: {total_loss / len(tgt)}')
 
-    def evaluate(self,model, loader, loss_fn):
+    def evaluate(self,model, inpt,out, loss_fn):
        
         losses = 0
         acc = 0
         history_loss = []
         history_acc = []
-       # data = zip(valid_in,valid_out)
-        with tqdm(loader, position=1, leave=False) as tbatch:
+        data = zip(inpt,out)
+        with tqdm(data, position=1, leave=False) as tbatch:
             model.eval()
             for x,y in tbatch:
-        
+                x = x.cuda()
+                y = y.cuda()
                 # input_loader = DataLoader(list_in, batch_size=self.batch, num_workers=0,shuffle=True,generator=self.generator)
                 # output_loader = DataLoader(list_out, batch_size=self.batch, num_workers=0,shuffle=True,generator=self.generator)
 
                 # for x, y in zip(input_loader,output_loader):
                     
-                x = x.unsqueeze(0)
-                y = y.unsqueeze(0)
+                # x = x.unsqueeze(0)
+                # y = y.unsqueeze(0)
                 logits,_ = model(x, y[:,:-1])
 
                 loss = loss_fn(logits.contiguous().view(-1, self.tgt_vocab_size), y[:, 1:].contiguous().view(-1))
@@ -336,7 +339,7 @@ class Transformers:
                 history_loss.append(loss.item())
                 history_acc.append(accuracy.item())
 
-                return losses/len(y) , acc/len(y) , history_loss, history_acc
+            return losses/len(inpt.dataset) , acc/len(inpt.dataset) , history_loss, history_acc
 
                     
                 #     size += len(list_inin)
