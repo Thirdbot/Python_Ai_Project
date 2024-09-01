@@ -111,8 +111,7 @@ class Program:
 
     #it work
     def soupDatasets(self,data_path,label,type,make_file):
-        saved = []
-        batch = []
+        
         #Both of these need to change
         if make_file:
             make_path = f"datasets/{data_path}_embeddings.feather"
@@ -126,6 +125,7 @@ class Program:
             
 
             for stuff in embedd_file[type][label]['embeddings']:
+                batch = []
                 for row in stuff:
                     numpy_array =torch.stack([torch.tensor(np.array(obj),dtype=torch.long).to("cuda") for obj in row])
                     #padd_arr = self.pad_array(numpy_array,self.pad_size)
@@ -139,12 +139,14 @@ class Program:
                     # batch = torch.tensor(batch).cuda()
                     #turn into int because encode not embeddings
                     batch.append(padd_arr.to(dtype=int))
-                    result = torch.stack(batch).to("cuda")
+                saved = torch.stack(batch).to("cuda")
                 
+            #result = torch.stack(saved).to("cuda")
+                    #batch = []
                 #saved.append(batch)
                 #yield saved
-                yield result.cuda()
-                batch = []
+            return saved.cuda()
+                
             
 
         else:
