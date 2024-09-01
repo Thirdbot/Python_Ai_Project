@@ -215,7 +215,7 @@ class Transformers:
             
             history_loss = []
             history_acc = []
-            
+
             i,o = self.batch_sample(list_input,list_output)
             for epochs in tepoch:
                 start_time = time.time()  
@@ -262,21 +262,23 @@ class Transformers:
                         self.optimizer.step()
                         #tepoch.set_postfix(loss=loss.item(), accuracy=100. * accuracy.item())
 
+                    #loss,acc of batch element
                     train_loss, train_acc, hist_loss, hist_acc = losses / len(o), acc / len(o), history_loss, history_acc
 
                     print("\nSize: ",count)
 
                     end_time = time.time()
 
-                    val_loss, val_acc, hist_loss, hist_acc = self.evaluate(transformer,i,o, self.criterion)
+                    #loss,acc of whole batch
+                    val_loss, val_acc, hist_loss, hist_acc = self.evaluate(transformer,i.dataset,o.dataset, self.criterion)
 
                     tepoch.set_description(f"Epoch {epochs}")
                     tepoch.set_postfix(trainloss=train_loss, trainaccuracy=train_acc,val_loss=val_loss,val_acc=val_acc)
                     
                    # print((f"\nEpoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s\n"))
 
-                    #fine tune whole datasets
-                    self.fine_tune(self.transformer,i,o,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+                    #fine tune whole datasets of batches file
+                    self.fine_tune(self.transformer,i.dataset,o.dataset,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
 
                     model_save_path = "model_checkpoint.pth"
                     print("\nsave model\n")
@@ -295,7 +297,8 @@ class Transformers:
             for src, tgt in data_loader:
                 src = src.cuda()
                 tgt = tgt.cuda()
-
+                src = src.unsqueeze(0)
+                tgt = tgt.unsqueeze(0)
                 self.optimizer.zero_grad()
                 
                 # Forward pass
@@ -327,8 +330,8 @@ class Transformers:
 
                 # for x, y in zip(input_loader,output_loader):
                     
-                # x = x.unsqueeze(0)
-                # y = y.unsqueeze(0)
+                x = x.unsqueeze(0)
+                y = y.unsqueeze(0)
                 logits,_ = model(x, y[:,:-1])
 
                 loss = loss_fn(logits.contiguous().view(-1, self.tgt_vocab_size), y[:, 1:].contiguous().view(-1))
@@ -342,7 +345,7 @@ class Transformers:
                 history_loss.append(loss.item())
                 history_acc.append(accuracy.item())
 
-            return losses/len(inpt.dataset) , acc/len(inpt.dataset) , history_loss, history_acc
+            return losses/len(out) , acc/len(out) , history_loss, history_acc
 
                     
                 #     size += len(list_inin)
