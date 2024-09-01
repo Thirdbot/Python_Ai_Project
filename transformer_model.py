@@ -271,9 +271,10 @@ class Transformers:
                     tepoch.set_description(f"Epoch {epochs}")
                     tepoch.set_postfix(trainloss=train_loss, trainaccuracy=train_acc,val_loss=val_loss,val_acc=val_acc)
                     
-                    print((f"\nEpoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s\n"))
+                   # print((f"\nEpoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s\n"))
 
-                #self.fine_tune(self.transformer,data_loader=zip(list_in,list_out),optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+                    #fine tune whole datasets
+                    self.fine_tune(self.transformer,data_loader=zip(i,o),optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
 
                     model_save_path = "model_checkpoint.pth"
                     print("\nsave model\n")
@@ -284,28 +285,28 @@ class Transformers:
 
 
 
-    # def fine_tune(self,model,data_loader, optimizer, criterion, num_epochs):
-    #     model.train()
+    def fine_tune(self,model,data_loader, optimizer, criterion, num_epochs):
+        model.train()
 
-    #     for epoch in range(num_epochs):
-    #         total_loss = 0
-    #         for src, tgt in data_loader:
-    #             src = src.unsqueeze(0)
-    #             tgt = tgt.unsqueeze(0)
+        for epoch in range(num_epochs):
+            total_loss = 0
+            for src, tgt in data_loader:
+                src = src.cuda()
+                tgt = tgt.cuda()
 
-    #             self.optimizer.zero_grad()
+                self.optimizer.zero_grad()
                 
-    #             # Forward pass
-    #             output, _ = model(src, tgt[:,:-1], cache=None)  # No caching during training
+                # Forward pass
+                output, _ = model(src, tgt[:,:-1], cache=None)  # No caching during training
                 
-    #             # Compute loss
-    #             loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), tgt[:, 1:].contiguous().view(-1))
-    #             total_loss += loss.item()
+                # Compute loss
+                loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), tgt[:, 1:].contiguous().view(-1))
+                total_loss += loss.item()
                 
-    #             # Backward pass and optimization
-    #             loss.backward()
-    #             optimizer.step()
-    #         print(f'\nEpoch {epoch + 1}/{num_epochs}, Loss: {total_loss / len(tgt)}')
+                # Backward pass and optimization
+                loss.backward()
+                optimizer.step()
+            #print(f'\nEpoch {epoch + 1}/{num_epochs}, Loss: {total_loss / len(tgt)}')
 
     def evaluate(self,model, inpt,out, loss_fn):
        
