@@ -34,7 +34,7 @@ class Transformers:
         self.word_size = 52000
         
         self.n_epochs = 300
-        self.batch = 32 #batch in this refer to batch for training
+        self.batch = 16 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
@@ -189,7 +189,7 @@ class Transformers:
         # src_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
         # tgt_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
         datasetss = Datasets()
-    
+        self.transformer = nn.DataParallel(self.transformer)
         count = 0
 
         #load between datasets
@@ -218,8 +218,6 @@ class Transformers:
                     adecode = datasetss.decode(list_outout[:,:-1])
                     print(f"\nQuestion: {qdecode}\nAnswer{adecode}")
 
-                    
-                    
                     with tqdm(range(self.n_epochs), position=0, leave=True) as tepoch:
                         losses = 0
                         acc = 0
@@ -232,6 +230,7 @@ class Transformers:
                             list_outout = list_outout.cuda()
 
                            ####implement dppo for data linked between labels or datasets input model (multimodal)
+                            
                             self.transformer.train()
                             self.optimizer.zero_grad()
                             output,_ = self.transformer(list_inin, list_outout[:,:-1],cache=None)
