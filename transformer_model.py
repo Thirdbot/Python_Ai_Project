@@ -212,10 +212,10 @@ class Transformers:
         
 
         with tqdm(range(1,self.n_epochs+1), position=1, leave=False) as tepoch:
-            losses = 0
-            acc = 0
+            
             history_loss = []
             history_acc = []
+            
             i,o = self.batch_sample(list_input,list_output)
             for epochs in tepoch:
                 start_time = time.time()  
@@ -228,6 +228,8 @@ class Transformers:
                 self.optimizer.zero_grad()
                 
                 count = 0
+                losses = 0
+                acc = 0
                 with tqdm(zip(i,o), position=0, leave=True) as tbatch:
                     for list_inin,list_outout in tbatch:
                         count += 1
@@ -274,7 +276,7 @@ class Transformers:
                    # print((f"\nEpoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s\n"))
 
                     #fine tune whole datasets
-                    self.fine_tune(self.transformer,data_loader=zip(i,o),optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+                    self.fine_tune(self.transformer,i,o,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
 
                     model_save_path = "model_checkpoint.pth"
                     print("\nsave model\n")
@@ -285,9 +287,9 @@ class Transformers:
 
 
 
-    def fine_tune(self,model,data_loader, optimizer, criterion, num_epochs):
+    def fine_tune(self,model,d_in,d_out, optimizer, criterion, num_epochs):
         model.train()
-
+        data_loader = zip(d_in,d_out)
         for epoch in range(num_epochs):
             total_loss = 0
             for src, tgt in data_loader:
