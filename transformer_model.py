@@ -33,8 +33,8 @@ class Transformers:
         self.lr = 0.00001
         self.word_size = 52000
         
-        self.n_epochs = 300
-        self.batch = 1 #batch in this refer to batch for training
+        self.n_epochs = 1
+        self.batch = 32 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
@@ -183,119 +183,124 @@ class Transformers:
        
 
 
-    
-    
+    def batch_sample(self,inpt,outp):
+        # datasetss = Datasets()
+        # with tqdm(zip(inpt,outp), position=1, leave=False) as tbatch:
+            
+        #     for list_in,list_out in tbatch:
+        input_loader = DataLoader(inpt.cpu(), batch_size=self.batch, num_workers=4,shuffle=False,pin_memory=True,generator=self.generator)
+        output_loader = DataLoader(outp.cpu(), batch_size=self.batch, num_workers=4,shuffle=False,pin_memory=True,generator=self.generator)
+                # count = 0
+                # for list_inin, list_outout in zip(input_loader,output_loader):
+                #     count += 1
+                #     tbatch.set_description(f"Batch step{count}")
+                #     qdecode = datasetss.decode(list_inin[:,:-1])
+                #     adecode = datasetss.decode(list_outout[:,:-1])
+                #     print(f"\nQuestion: {qdecode}\nAnswer{adecode}")
+        return input_loader,output_loader
+
     def runtrain(self,list_input,list_output):
         # src_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
         # tgt_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
-        datasetss = Datasets()
-        self.transformer = nn.DataParallel(self.transformer)
-        count = 0
+        
+        transformer = nn.DataParallel(self.transformer)
 
         #load between datasets
         # if os.path.exists("model_checkpoint.pth"):
         #     self.transformer = self.load_model(path="model_checkpoint.pth")
-
-        with tqdm(zip(list_input,list_output), position=1, leave=True) as tbatch:
-            for list_in,list_out in tbatch:
+        datasetss = Datasets()
         
-                input_loader = DataLoader(list_in.cpu(), batch_size=self.batch, num_workers=4,shuffle=False,pin_memory=True,generator=self.generator)
-                output_loader = DataLoader(list_out.cpu(), batch_size=self.batch, num_workers=4,shuffle=False,pin_memory=True,generator=self.generator)
 
-        # print(f"list_in size: {len(list_in)} list_out size: {len(list_out)}")
-        #batch data again
-        #self.model.optimizer.zero_grad()
-        
-        
-                for list_inin, list_outout in zip(input_loader,output_loader):
+        with tqdm(range(self.n_epochs), position=0, leave=False) as tepoch:
+            losses = 0
+            acc = 0
+            history_loss = []
+            history_acc = []
+            i,o = self.batch_sample(list_input,list_output)
+            for epochs in tepoch:
+                start_time = time.time()  
+                tepoch.set_description(f"Epoch {epochs}")
+                
 
+                ####implement dppo for data linked between labels or datasets input model (multimodal)
+                
+                transformer.train()
+                self.optimizer.zero_grad()
+                
+                count = 0
+                for list_inin,list_outout in zip(i,o):
                     count += 1
-                    tbatch.set_description(f"Batch step{count}")
-                    #print(f"\tlist_inin size: {list_inin.shape} list_outout size: {list_outout.shape}")
-                    #print(list_inin,list_outout)
-                    # print(src_data,tgt_data)
+                    
+                    list_inin = list_inin.cuda()
+                    list_outout = list_outout.cuda()
+
                     qdecode = datasetss.decode(list_inin[:,:-1])
                     adecode = datasetss.decode(list_outout[:,:-1])
                     print(f"\nQuestion: {qdecode}\nAnswer{adecode}")
+                    output,_ = transformer(list_inin, list_outout[:,:-1],cache=None)
+                    #output = self.transformer(list_inin, list_outout)
 
-                    with tqdm(range(self.n_epochs), position=0, leave=True) as tepoch:
-                        losses = 0
-                        acc = 0
-                        history_loss = []
-                        history_acc = []
+                
+                    
+                    # loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
+                    loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
 
-                        for epochs in tepoch:
-                            # start_time = time.time()  
-                            tepoch.set_description(f"Epoch {epochs}")
-                            list_inin = list_inin.cuda()
-                            list_outout = list_outout.cuda()
+                    loss.backward()
 
-                           ####implement dppo for data linked between labels or datasets input model (multimodal)
-                            
-                            self.transformer.train()
-                            self.optimizer.zero_grad()
-                            output,_ = self.transformer(list_inin, list_outout[:,:-1],cache=None)
-                            #output = self.transformer(list_inin, list_outout)
+                    losses += loss.item()
 
-                        
-                            
-                            # loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
-                            loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
+                    preds = output.argmax(dim=-1)
+                    masked_pred = preds * (list_outout[:, 1:]!=0)
+                    accuracy = (masked_pred == list_outout[:, 1:]).float().mean()
+                    acc += accuracy.item()
 
-                            loss.backward()
-
-                            losses += loss.item()
-
-                            preds = output.argmax(dim=-1)
-                            masked_pred = preds * (list_outout[:, 1:]!=0)
-                            accuracy = (masked_pred == list_outout[:, 1:]).float().mean()
-                            acc += accuracy.item()
-
-                            self.optimizer.step()
-
-                            # history_loss.append(loss.item())
-                            # history_acc.append(accuracy.item())
-                            tepoch.set_postfix(loss=loss.item(), accuracy=100. * accuracy.item())
+                    self.optimizer.step()
+                    tepoch.set_postfix(loss=loss.item(), accuracy=100. * accuracy.item())
 
                     train_loss, train_acc, hist_loss, hist_acc = losses / len(list_outout), acc / len(list_outout), history_loss, history_acc
 
-                    # end_time = time.time()
+                print("\nSize: ",count)
+                end_time = time.time()
 
-                    val_loss, val_acc, hist_loss, hist_acc = self.evaluate(self.transformer,zip(list_inin,list_outout), self.criterion)
-                    # history['eval_loss'] += hist_loss
-                    # history['eval_acc'] += hist_acc
-                    tbatch.set_postfix(trainloss=train_loss, trainaccuracy=train_acc,val_loss=val_loss,val_acc=val_acc)
-                    
-                    #print((f"Epoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s"))
+                val_loss, val_acc, hist_loss, hist_acc = self.evaluate(transformer,zip(list_inin,list_outout), self.criterion)
+           
+                # tepoch.set_postfix(trainloss=train_loss, trainaccuracy=train_acc,val_loss=val_loss,val_acc=val_acc)
+            
+                print((f"Epoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s"))
 
-                self.fine_tune(self.transformer,data_loader=zip(input_loader,output_loader),optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+            #self.fine_tune(self.transformer,data_loader=zip(list_in,list_out),optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
 
                 model_save_path = "model_checkpoint.pth"
                 print("save model")
                 self.save_model(model_save_path)
 
-    def fine_tune(self,model,data_loader, optimizer, criterion, num_epochs):
-        model.train()
 
-        for epoch in range(num_epochs):
-            total_loss = 0
-            for src, tgt in data_loader:
-                src = src.unsqueeze(0)
-                tgt = tgt.unsqueeze(0)
 
-                self.optimizer.zero_grad()
+
+
+
+    # def fine_tune(self,model,data_loader, optimizer, criterion, num_epochs):
+    #     model.train()
+
+    #     for epoch in range(num_epochs):
+    #         total_loss = 0
+    #         for src, tgt in data_loader:
+    #             src = src.unsqueeze(0)
+    #             tgt = tgt.unsqueeze(0)
+
+    #             self.optimizer.zero_grad()
                 
-                # Forward pass
-                output, _ = model(src, tgt[:,:-1], cache=None)  # No caching during training
+    #             # Forward pass
+    #             output, _ = model(src, tgt[:,:-1], cache=None)  # No caching during training
                 
-                # Compute loss
-                loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), tgt[:, 1:].contiguous().view(-1))
-                total_loss += loss.item()
+    #             # Compute loss
+    #             loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), tgt[:, 1:].contiguous().view(-1))
+    #             total_loss += loss.item()
                 
-                # Backward pass and optimization
-                loss.backward()
-                optimizer.step()
-                print(f'\nEpoch {epoch + 1}/{num_epochs}, Loss: {total_loss / len(tgt)}')
+    #             # Backward pass and optimization
+    #             loss.backward()
+    #             optimizer.step()
+    #         print(f'\nEpoch {epoch + 1}/{num_epochs}, Loss: {total_loss / len(tgt)}')
 
     def evaluate(self,model, loader, loss_fn):
        

@@ -30,7 +30,7 @@ class Program:
         
         
         self.datapath = "datasets"
-        self.batch = 64  #batch size in this refer to bbatch in save files mean 32 batch for n times
+        self.batch = 1  #batch size in this refer to bbatch in save files mean 32 batch for n times
         self.pad_size = 100
 
         self.data_fetch = {'files':{}}
@@ -113,7 +113,7 @@ class Program:
 
     #it work
     def soupDatasets(self,data_path,label,type,make_file):
-        
+        batch = []
         #Both of these need to change
         if make_file:
             make_path = f"datasets/{data_path}_embeddings.feather"
@@ -127,7 +127,7 @@ class Program:
             
 
             for stuff in embedd_file[type][label]['embeddings']:
-                batch = []
+                # batch = []
                 for row in stuff:
                     numpy_array =torch.stack([torch.tensor(np.array(obj),dtype=torch.long).to("cuda") for obj in row])
                     #padd_arr = self.pad_array(numpy_array,self.pad_size)
@@ -141,12 +141,12 @@ class Program:
                     # batch = torch.tensor(batch).cuda()
                     #turn into int because encode not embeddings
                     batch.append(padd_arr.to(dtype=int))
-                saved = torch.stack(batch).to("cuda")
+                saved = torch.stack(batch)
                 
-            #result = torch.stack(saved).to("cuda")
+            result = torch.cat([saved]).to("cuda")
                     #batch = []
-                #saved.append(batch)
-                yield saved
+            #result.append(saved)
+            return torch.stack([obj for obj in result])
             #return saved.cuda()
                 
             
