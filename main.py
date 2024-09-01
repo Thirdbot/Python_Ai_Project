@@ -34,7 +34,7 @@ class Program:
         self.pad_size = 100
 
         self.data_fetch = {'files':{}}
-        self.run_train = False
+        self.run_train = True
 
         
 
@@ -59,9 +59,12 @@ class Program:
                         print("couple: ",couple)
                         self.inputs = self.soupDatasets(data_path,couple[0],'train',self.make_file)
                         self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
-                        # self.tinputs = self.soupDatasets(data_path,couple[0],'test',self.make_file)
-                        # self.toutputs = self.soupDatasets(data_path,couple[1],'test',self.make_file)
+                        self.tinputs = self.soupDatasets(data_path,couple[0],'test',self.make_file)
+                        self.toutputs = self.soupDatasets(data_path,couple[1],'test',self.make_file)
+                        #train valid
                         transformer_model.runtrain(self.inputs,self.outputs)
+                        #test valid
+                        transformer_model.runtrain(self.tinputs,self.toutputs)
                         #self.embedded(arr=self.inputs)
                         
                         # print(f"run model: {couple}")
@@ -144,8 +147,8 @@ class Program:
             #result = torch.stack(saved).to("cuda")
                     #batch = []
                 #saved.append(batch)
-                #yield saved
-            return saved.cuda()
+                yield saved
+            #return saved.cuda()
                 
             
 
