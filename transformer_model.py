@@ -29,12 +29,12 @@ class Transformers:
         self.num_layers = 6
         self.d_ff = 2048
         # max_seq_length = 100
-        self.dropout = 0.1
+        self.dropout = 0.4
         self.lr = 0.0001
         self.word_size = 52000
         
         self.n_epochs = 100
-        self.batch = 8 #batch in this refer to batch for training
+        self.batch = 32 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
@@ -89,6 +89,54 @@ class Transformers:
                 break
         
         return tgt
+    
+    # def beam_search(self,decoder, src, max_length, beam_size):
+    #     # Initialize beams with start token and zero probability
+    #     beams = [(torch.zeros(1, 1).long().to('cuda'), 0)]  # (sequence, probability)
+
+    #     for _ in range(max_length):
+    #         new_beams = []
+    #         for seq, score in beams:
+    #             # Predict the next token probabilities
+    #             output, _ = decoder(src, seq)
+    #             next_token_probs = torch.log_softmax(output[:, -1, :], dim=-1)
+
+    #             # Get the top `beam_size` tokens and expand beams
+    #             topk_probs, topk_tokens = next_token_probs.topk(beam_size)
+    #             for token, prob in zip(topk_tokens[0], topk_probs[0]):
+    #                 new_seq = torch.cat([seq.squeeze(0), token.unsqueeze(0)], dim=0)
+    #                 new_score = score + prob.item()
+    #                 new_beams.append((new_seq, new_score))
+            
+    #         # Keep the top `beam_size` beams
+    #         beams = sorted(new_beams, key=lambda x: x[1], reverse=True)[:beam_size]
+
+    #         # Stop if all beams have ended with the end token
+    #         if all(seq[-1] == 2 for seq, _ in beams):  # Assuming 2 is the end token
+    #             break
+
+    #     return beams[0][0]  # Return the most likely sequence
+    
+    # def top_p_sampling(self,decoder, src, max_length, p):
+    #     seq = torch.zeros(1, 1).long().to('cuda')  # Start token
+    #     for _ in range(max_length):
+    #         output, _ = decoder(src, seq[:, -1:])
+    #         next_token_probs = torch.softmax(output[:, -1, :], dim=-1)
+    #         sorted_probs, sorted_indices = torch.sort(next_token_probs, descending=True)
+    #         cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
+
+    #         # Filter out tokens that exceed the cumulative probability `p`
+    #         mask = cumulative_probs > p
+    #         sorted_probs[mask] = 0
+    #         sorted_probs /= sorted_probs.sum()  # Renormalize probabilities
+
+    #         next_token = sorted_indices[torch.multinomial(sorted_probs, 1)]
+    #         seq = torch.cat([seq, next_token], dim=1)
+
+    #         if next_token.item() == 2:  # Assuming 2 is the end token
+    #             break
+
+    #     return seq
     def interference(self):
         file = "model_checkpoint.pth"
         self.transformer = self.load_model(file)
@@ -105,27 +153,8 @@ class Transformers:
             
             embbed_sent = embbed_sent.to("cuda")  # Ensure embeddings are on the correct device
             tgt_data = self.generate(self.transformer,embbed_sent,100)
-
-            # tgt_data = torch.zeros(embbed_sent.shape[0], 1, dtype=torch.long).to("cuda")
-            # #tgt_data = torch.zeros((1, 1)).long().to('cuda')
-            # cache = [None] * len(self.transformer.decoder_layers)
-            # for i in range(1, 100):  # Assuming max length 100
-                
-            #     with torch.no_grad():
-            #         self.transformer.eval()  # Set model to evaluation mode
-                    
-            #         output,cache  = self.transformer(embbed_sent, tgt_data,cache=cache)
-
-            #         # Get the most likely next token
-            #         next_token = output[:, -1, :].argmax(dim=-1, keepdim=True)
-
-            #         # Append the predicted token to the target sequence
-            #         tgt_data = torch.cat([tgt_data, next_token], dim=1)
-
-            #         # Stop if the model predicts the end token 2 is end token
-            #         if next_token.item() == 2:
-            #             break
-
+            #tgt_data = self.top_p_sampling(self.transformer,embbed_sent,100,p=0.5)
+            #tgt_data = self.beam_search(self.transformer,embbed_sent,100,100)
             # Decode the generated sequence
             output_tokens = tgt_data.squeeze().tolist()
             decoded_output = datasetss.decode(output_tokens)
@@ -269,6 +298,8 @@ class Transformers:
 
                     end_time = time.time()
 
+                    #fine tune whole datasets of batches file
+                    self.fine_tune(self.transformer,i.dataset,o.dataset,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
                     #loss,acc of whole batch
                     val_loss, val_acc, hist_loss, hist_acc = self.evaluate(transformer,i.dataset,o.dataset, self.criterion)
 
@@ -277,8 +308,7 @@ class Transformers:
                     
                    # print((f"\nEpoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s\n"))
 
-                    #fine tune whole datasets of batches file
-                    self.fine_tune(self.transformer,i.dataset,o.dataset,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+                   
 
                     model_save_path = "model_checkpoint.pth"
                     print("\nsave model\n")
@@ -347,10 +377,7 @@ class Transformers:
 
             return losses/len(out) , acc/len(out) , history_loss, history_acc
 
-                    
-                #     size += len(list_inin)
-                # print(f"batch done total size {size}")
-            
+
                     
 # Credit to Arjun Sarkar and my tweak            
                     
