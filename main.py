@@ -30,7 +30,7 @@ class Program:
         
         
         self.datapath = "datasets"
-        self.batch = 1  #batch size in this refer to bbatch in save files mean 32 batch for n times
+        self.batch = 64  #batch size in this refer to bbatch in save files mean 32 batch for n times
         self.pad_size = 100
 
         self.data_fetch = {'files':{}}
