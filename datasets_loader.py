@@ -47,6 +47,7 @@ class Datasets:
 
 
     def datasets_iter(self,datasets,batch):
+        #need to iter image datasets and custom embeded image
         print("founded datasets: ",datasets)
         mem_file_path = "file_info.json"
         if os.path.exists(mem_file_path):
