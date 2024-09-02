@@ -1,6 +1,7 @@
 ###this part for load multiple datasets load secound
 from datasets import load_dataset,get_dataset_config_names,get_dataset_split_names,get_dataset_infos
 from transformers import GPT2TokenizerFast,BertModel,GPT2Model,BertTokenizerFast
+from transformers import AutoTokenizer
 
 from tokenizers import Tokenizer
 import numpy as np
@@ -38,10 +39,12 @@ class Datasets:
         # self.set_tokenizer.sep_token = self.set_tokenizer.eos_token
         # self.set_tokenizer.pad_token = self.set_tokenizer.eos_token
         
-        self.set_tokenizer = BertTokenizerFast(tokenizer_file=self.token_path)
+        #self.set_tokenizer = BertTokenizerFast(tokenizer_file=self.token_path)
+        self.set_tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
         # self.model = GPT2Model.from_pretrained('gpt2').cuda()
-        self.model = BertModel.from_pretrained('bert-base-uncased').cuda()
-        self.model.eval()
+        #self.model = BertModel.from_pretrained('bert-base-uncased').cuda()
+        #self.model.eval()
+
         #self.find_datasets = self.Datasets_Finder(self.path)
         
 

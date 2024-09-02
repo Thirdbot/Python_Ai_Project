@@ -298,8 +298,8 @@ class Transformers:
                     end_time = time.time()
 
                     #fine tune whole datasets of batches file
-                    # self.fine_tune(self.transformer,i.dataset,o.dataset,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
-                    # self.fine_tune(self.transformer,ti.dataset,to.dataset,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+                    # self.fine_tune(transformer,i.dataset,o.dataset,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+                    # self.fine_tune(transformer,ti.dataset,to.dataset,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
 
                     #loss,acc of whole batch
                     val_loss, val_acc, hist_loss, hist_acc = self.evaluate(transformer,i.dataset,o.dataset, self.criterion)
