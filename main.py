@@ -35,7 +35,7 @@ class Program:
         self.pad_size = 100
 
         self.data_fetch = {'files':{}}
-        self.run_train = False
+        self.run_train = True
 
         
 

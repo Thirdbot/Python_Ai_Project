@@ -26,10 +26,10 @@ class Transformers:
         self.tgt_vocab_size = 25000
         self.d_model = 768
         self.num_heads = 16
-        self.num_layers = 6
+        self.num_layers = 12
         self.d_ff = 2048
         # max_seq_length = 100
-        self.dropout = 0.4
+        self.dropout = 0.5
         self.lr = 0.0001
         self.word_size = 25000
         
@@ -242,14 +242,13 @@ class Transformers:
                    # print((f"\nEpoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s\n"))
 
                     #fine tune whole datasets of batches file
-                # with tqdm(data, position=2, leave=False) as tune:
-                #     for tune_in,tune_out in tune:
-                #         tune.set_description(f"Tune train")
-                #         self.fine_tune(transformer,tune_in,tune_out,optimizer=optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
-                with tqdm(test_data, position=2, leave=False) as ttune:
-                    for test_in,test_output in ttune:
-                        ttune.set_description(f"Tune test")
-                        self.fine_tune(transformer,test_in,test_output,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+                with tqdm(data.dataset, position=2, leave=False) as tune:
+                    tune.set_description(f"Tune train")
+                    self.fine_tune(transformer,tune,optimizer=optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+
+                with tqdm(test_data.dataset, position=3, leave=False) as ttune:
+                    ttune.set_description(f"Tune test")
+                    self.fine_tune(transformer,ttune,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
 
                 model_save_path = "model_checkpoint.pth"
                 print("\nsave model\n")
@@ -262,29 +261,31 @@ class Transformers:
 
 
 
-    def fine_tune(self,model,d_in,d_out, optimizer, criterion, num_epochs):
+    def fine_tune(self,model,data_loader, optimizer, criterion, num_epochs):
         model.train()
-        data_loader = zip(d_in,d_out)
+        # data_loader = zip(d_in,d_out)
         for epoch in range(num_epochs):
             total_loss = 0
             for src, tgt in data_loader:
-                src = src.cuda()
-                tgt = tgt.cuda()
                 src = src.unsqueeze(0)
                 tgt = tgt.unsqueeze(0)
+                src = src.cuda()
+                tgt = tgt.cuda()
+                
+                
                 self.optimizer.zero_grad()
                 
-                # Forward pass
-                output, _ = model(src, tgt[:,:-1], cache=None)  # No caching during training
+                # # Forward pass
+                output, _ = model(src, tgt, cache=None)  # No caching during training
                 
                 # Compute loss
-                loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), tgt[:, 1:].contiguous().view(-1))
+                loss = criterion(output[:,1:].contiguous().view(-1, self.tgt_vocab_size), tgt[:, 1:].contiguous().view(-1))
                 total_loss += loss.item()
                 
                 # Backward pass and optimization
                 loss.backward()
                 optimizer.step()
-            #print(f'\nEpoch {epoch + 1}/{num_epochs}, Loss: {total_loss / len(tgt)}')
+                # #print(f'\nEpoch {epoch + 1}/{num_epochs}, Loss: {total_loss / len(tgt)}')
 
 
     def evaluate(self,model, inpt,out, loss_fn):
