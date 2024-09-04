@@ -153,10 +153,13 @@ class Transformers:
 
     def batch_sample(self,inpt,outp):
         
-        input_loader = DataLoader(inpt.cpu(), batch_size=self.batch, num_workers=4,shuffle=False,pin_memory=True,generator=self.generator)
-        output_loader = DataLoader(outp.cpu(), batch_size=self.batch, num_workers=4,shuffle=False,pin_memory=True,generator=self.generator)
+        # input_loader = DataLoader(inpt.cpu(), batch_size=self.batch, num_workers=4,shuffle=False,pin_memory=True,generator=self.generator)
+        # output_loader = DataLoader(outp.cpu(), batch_size=self.batch, num_workers=4,shuffle=False,pin_memory=True,generator=self.generator)
 
-        return input_loader,output_loader
+        # return input_loader,output_loader
+
+        loader = DataLoader(list(zip(inpt.cpu(),outp.cpu())), batch_size=self.batch, num_workers=4,shuffle=True,pin_memory=True,generator=self.generator)
+        return loader
 
     def runtrain(self,list_input,list_output,test_input,test_output):
         if os.path.exists("model_checkpoint.pth"):
@@ -165,8 +168,8 @@ class Transformers:
         optimizer = torch.optim.Adam(transformer.parameters(), lr=self.lr, betas=(0.9, 0.98), eps=1e-9)
         datasetss = Datasets()
         
-        i,o = self.batch_sample(list_input,list_output)
-        ti,to = self.batch_sample(test_input,test_output)
+        data = self.batch_sample(list_input,list_output)
+        test_data = self.batch_sample(test_input,test_output)
 
         with tqdm(range(1,self.n_epochs+1), position=1, leave=False) as tepoch:
             
@@ -189,9 +192,9 @@ class Transformers:
                 losses = 0
                 acc = 0
     
-                with tqdm(zip(i,o), position=0, leave=True) as tbatch:
+                with tqdm(data, position=0, leave=True) as tbatch:
                     for list_inin,list_outout in tbatch:
-                        self.fine_tune(transformer,i.dataset,o.dataset,optimizer=optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+                        
                         count += 1
                         tbatch.set_description(f"Batch step{count}")
 
@@ -201,7 +204,7 @@ class Transformers:
                         # qdecode = datasetss.decode(list_inin[:,:-1])
                         # adecode = datasetss.decode(list_outout[:,:-1])
                         # print(f"\nQuestion: {qdecode}\nAnswer{adecode}\n")
-                        output,_ = transformer(list_inin, list_outout[:,:,-1])
+                        output,_ = transformer(list_inin, list_outout[:,:-1])
                         #output = self.transformer(list_inin, list_outout)
 
                     
@@ -224,14 +227,14 @@ class Transformers:
                         #tepoch.set_postfix(loss=loss.item(), accuracy=100. * accuracy.item())
 
                     #loss,acc of batch element
-                    train_loss, train_acc, hist_loss, hist_acc = losses / len(o), acc / len(o), history_loss, history_acc
+                    train_loss, train_acc, hist_loss, hist_acc = losses / len(list_outout), acc / len(list_outout), history_loss, history_acc
 
                     print("\nSize: ",count)
 
                     end_time = time.time()
 
                     #loss,acc of whole batch
-                    val_loss, val_acc, hist_loss, hist_acc = self.evaluate(transformer,i.dataset,o.dataset, self.criterion)
+                    val_loss, val_acc, hist_loss, hist_acc = self.evaluate(transformer,list_inin,list_outout, self.criterion)
 
                     tepoch.set_description(f"Epoch {epochs}")
                     tepoch.set_postfix(trainloss=train_loss, trainaccuracy=train_acc,val_loss=val_loss,val_acc=val_acc)
@@ -239,8 +242,14 @@ class Transformers:
                    # print((f"\nEpoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s\n"))
 
                     #fine tune whole datasets of batches file
-                self.fine_tune(transformer,i.dataset,o.dataset,optimizer=optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
-                self.fine_tune(transformer,ti.dataset,to.dataset,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+                with tqdm(data, position=0, leave=True) as tune:
+                    for tune_in,tune_out in tune:
+                        tune.set_description(f"Tune train")
+                        self.fine_tune(transformer,tune_in,tune_out,optimizer=optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+                with tqdm(test_data, position=0, leave=True) as ttune:
+                    for test_in,test_output in ttune:
+                        tune.set_description(f"Tune test")
+                        self.fine_tune(transformer,test_in,test_output,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
 
                 model_save_path = "model_checkpoint.pth"
                 print("\nsave model\n")
@@ -254,41 +263,29 @@ class Transformers:
 
 
     def fine_tune(self,model,d_in,d_out, optimizer, criterion, num_epochs):
-        
-        
-        generator = torch.Generator(device='cuda')
-        #data_loader = DataLoader(list(zip(d_in, d_out)), shuffle=True,batch_size=100, pin_memory=True, num_workers=4,generator=generator)
+        model.train()
         data_loader = zip(d_in,d_out)
         for epoch in range(num_epochs):
             total_loss = 0
-           
-            cache = [None] * len(self.transformer.decoder_layers)
             for src, tgt in data_loader:
-                
-                src = src.cuda(non_blocking=True)
-                tgt = tgt.cuda(non_blocking=True)
+                src = src.cuda()
+                tgt = tgt.cuda()
                 src = src.unsqueeze(0)
                 tgt = tgt.unsqueeze(0)
                 self.optimizer.zero_grad()
-                store_tgt = torch.zeros(src.shape[0], 1, dtype=torch.long).to("cuda")
-                for i in range(98):
-                    model.eval()
-                    output, cache = model(src, store_tgt[:, -1:], cache=cache)
-                    next_token = output[:, -1, :].argmax(dim=-1, keepdim=True)
-                    #output = output.contiguous().view(-1,self.tgt_vocab_size)
-                    
-                    store_tgt = torch.cat((store_tgt, next_token),dim=1)
-                print(store_tgt.float().contiguous().view(-1))
-                model.train()
-                # print(store_tgt.contiguous().view(-1))
-                print(tgt[:, 1:].contiguous().view(-1))
-                loss = criterion(store_tgt.float().contiguous().view(-1), tgt[:, 1:].long().contiguous().view(-1))
+                
+                # Forward pass
+                output, _ = model(src, tgt[:,:-1], cache=None)  # No caching during training
+                
+                # Compute loss
+                loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), tgt[:, 1:].contiguous().view(-1))
                 total_loss += loss.item()
                 
-                    # Backward pass and optimization
+                # Backward pass and optimization
                 loss.backward()
                 optimizer.step()
             #print(f'\nEpoch {epoch + 1}/{num_epochs}, Loss: {total_loss / len(tgt)}')
+
 
     def evaluate(self,model, inpt,out, loss_fn):
        
