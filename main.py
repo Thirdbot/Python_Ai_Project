@@ -8,7 +8,8 @@ from custom_tokenizer import *
 # from transformers import PreTrainedTokenizerFast
 # from transformers import GPT2TokenizerFast
 import torch
-from transformer_model import Transformers
+#from transformer_model import Transformers
+from huggingface_transformer_model import Transformers
 import torch.nn.utils.rnn as rnn_utils
 import pandas as pd
 import pyarrow.parquet as pq
@@ -30,11 +31,11 @@ class Program:
         
         
         self.datapath = "datasets"
-        self.batch = 64  #batch size in this refer to bbatch in save files mean 32 batch for n times
+        self.batch = 128  #batch size in this refer to bbatch in save files mean 32 batch for n times
         self.pad_size = 100
 
         self.data_fetch = {'files':{}}
-        self.run_train = False
+        self.run_train = True
 
         
 

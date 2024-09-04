@@ -26,7 +26,7 @@ class Tokenization:
         #define unknown tokens and models to work with trainner like bpe,wordpiece etc...
 
 
-        tokenizer = Tokenizer(models.WordPiece(unk_token="[UNK]"))
+        tokenizer = Tokenizer(models.WordLevel(unk_token="[UNK]"))
         #tokenizer = Tokenizer(models.BPE())
 
         # tokenizer.pre_tokenizer = pre_tokenizers.Sequence(
@@ -47,7 +47,7 @@ class Tokenization:
         #specials tokens defined
         special_tokens =["[PAD]", "[CLS]", "[SEP]", "[UNK]", "[MASK]"]
         #set trainers with special token seperately
-        trainer = trainers.WordPieceTrainer(vocab_size=52000, special_tokens=special_tokens)
+        trainer = trainers.WordLevelTrainer(vocab_size=25000, special_tokens=special_tokens)
         
         #byte pair
         #set trainers with one special tokens at the end

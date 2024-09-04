@@ -22,19 +22,19 @@ class Transformers:
     def __init__(self) -> None:
         super().__init__()
         #its an attention of srcand tgt size that interpret so word_size need to be same as vocabb_size
-        self.src_vocab_size = 52000
-        self.tgt_vocab_size = 52000
+        self.src_vocab_size = 25000
+        self.tgt_vocab_size = 25000
         self.d_model = 768
-        self.num_heads = 8
+        self.num_heads = 16
         self.num_layers = 6
         self.d_ff = 2048
         # max_seq_length = 100
         self.dropout = 0.4
         self.lr = 0.0001
-        self.word_size = 52000
+        self.word_size = 25000
         
-        self.n_epochs = 500
-        self.batch = 32  #batch in this refer to batch for training
+        self.n_epochs = 10
+        self.batch = 32 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
@@ -89,7 +89,7 @@ class Transformers:
                 break
         
         return tgt
-    
+   
     def interference(self):
         file = "model_checkpoint.pth"
         self.transformer = self.load_model(file)
@@ -116,21 +116,7 @@ class Transformers:
             for i in merged_output:
                 print(i,end='')
             print("\n")
-            # fig = plt.figure()
-            # images = self.transformer.decoder_layers[0].cross_attn[0,...].cpu().detach().numpy().mean(axis=0)
-
-            # fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-            
-            # ax.set_yticks(range(len(output)))
-            # ax.set_xticks(range(len(sentence)))
-            # ax.xaxis.set_label_position('top')
-            # ax.set_xticklabels(list(sentence))
-            # ax.set_yticklabels([f"step {i}" for i in range(len(output))])
-            # images = np.clip(images, 0, 1)
-            # # images = np.mean(images, axis=0)
-            # cax = ax.imshow(images, aspect='auto', cmap='viridis')
-            # fig.colorbar(cax)
-            # plt.show()  # Ensure the plot is displayed
+         
 
     def merge_subword_tokens(self, decoded_sentences):
         """Merge subword tokens in a list of decoded sentences."""
@@ -154,7 +140,7 @@ class Transformers:
         embeds = []
         sequence_lengths = []
 
-        embed_input = datasets_Detail.set_tokenizer.batch_encode_plus(list_input, padding='longest',truncation=True,add_special_tokens = True,return_attention_mask = True,max_length=word_size, return_tensors='pt')
+        embed_input = datasets_Detail.set_tokenizer.batch_encode_plus(list_input, padding='max_length',truncation=True,add_special_tokens = True,return_attention_mask = True,max_length=word_size, return_tensors='pt')
         
         #embedded_model = GPT2Model.from_pretrained('gpt2')
         tensor_id = embed_input['input_ids'].long()
@@ -166,68 +152,58 @@ class Transformers:
 
 
     def batch_sample(self,inpt,outp):
-        datasetss = Datasets()
-        # with tqdm(zip(inpt,outp), position=1, leave=False) as tbatch:
-            
-        #     for list_in,list_out in tbatch:
+        
         input_loader = DataLoader(inpt.cpu(), batch_size=self.batch, num_workers=4,shuffle=False,pin_memory=True,generator=self.generator)
         output_loader = DataLoader(outp.cpu(), batch_size=self.batch, num_workers=4,shuffle=False,pin_memory=True,generator=self.generator)
-                # count = 0
-                # for list_inin, list_outout in zip(input_loader,output_loader):
-                #     count += 1
-                #     tbatch.set_description(f"Batch step{count}")
-                #     qdecode = datasetss.decode(list_inin[:,:-1])
-                #     adecode = datasetss.decode(list_outout[:,:-1])
-                #     print(f"\nQuestion: {qdecode}\nAnswer{adecode}")
+
         return input_loader,output_loader
 
     def runtrain(self,list_input,list_output,test_input,test_output):
-        # src_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
-        # tgt_data = torch.randint(1, 25000, (1, 100))  # (batch_size, seq_length)
-        
-        transformer = nn.DataParallel(self.transformer)
-
-        #load between datasets
         if os.path.exists("model_checkpoint.pth"):
             self.transformer = self.load_model(path="model_checkpoint.pth")
+        transformer = nn.DataParallel(self.transformer)
+        optimizer = torch.optim.Adam(transformer.parameters(), lr=self.lr, betas=(0.9, 0.98), eps=1e-9)
         datasetss = Datasets()
         
         i,o = self.batch_sample(list_input,list_output)
         ti,to = self.batch_sample(test_input,test_output)
 
-        
-        with tqdm(zip(i,o), position=1, leave=True) as tbatch:
-            count = 0
-            for list_inin,list_outout in tbatch:
-                count += 1
-                tbatch.set_description(f"Batch step{count}")
+        with tqdm(range(1,self.n_epochs+1), position=1, leave=False) as tepoch:
+            
+            history_loss = []
+            history_acc = []
 
-                list_inin = list_inin.cuda()
-                list_outout = list_outout.cuda()
+            # i,o = self.batch_sample(list_input,list_output)
 
-                qdecode = datasetss.decode(list_inin[:,:-1])
-                adecode = datasetss.decode(list_outout[:,:-1])
-                print(f"\nQuestion: {qdecode}\nAnswer{adecode}\n")
-
-                with tqdm(range(1,self.n_epochs+1), position=0, leave=True) as tepoch:
-                    
-                    for epochs in tepoch:
-                        start_time = time.time()  
-                        tepoch.set_description(f"Epoch {epochs}")
-                        ####implement dppo for data linked between labels or datasets input model (multimodal)
-                        
-                        transformer.train()
-                        self.optimizer.zero_grad()
-                        
-                        
-                        losses = 0
-                        acc = 0
-                        history_loss = []
-                        history_acc = []
+            for epochs in tepoch:
+                start_time = time.time()  
+              
                 
+
+                ####implement dppo for data linked between labels or datasets input model (multimodal)
+                
+                transformer.train()
+               
+                
+                count = 0
+                losses = 0
+                acc = 0
+                with tqdm(zip(i,o), position=0, leave=True) as tbatch:
+                    for list_inin,list_outout in tbatch:
+                        count += 1
+                        tbatch.set_description(f"Batch step{count}")
+
+                        list_inin = list_inin.cuda()
+                        list_outout = list_outout.cuda()
+
+                        qdecode = datasetss.decode(list_inin[:,:-1])
+                        adecode = datasetss.decode(list_outout[:,:-1])
+                        print(f"\nQuestion: {qdecode}\nAnswer{adecode}\n")
                         output,_ = transformer(list_inin, list_outout[:,:-1],cache=None)
                         #output = self.transformer(list_inin, list_outout)
 
+                    
+                        
                         # loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
                     
                         loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
@@ -241,7 +217,8 @@ class Transformers:
                         accuracy = (masked_pred == list_outout[:, 1:]).float().mean()
                         acc += accuracy.item()
 
-                        self.optimizer.step()
+                        optimizer.step()
+                        optimizer.zero_grad()
                         #tepoch.set_postfix(loss=loss.item(), accuracy=100. * accuracy.item())
 
                     #loss,acc of batch element
@@ -251,23 +228,23 @@ class Transformers:
 
                     end_time = time.time()
 
-                    #fine tune whole datasets of batches file
-                    # self.fine_tune(transformer,i.dataset,o.dataset,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
-                    # self.fine_tune(transformer,ti.dataset,to.dataset,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
-
                     #loss,acc of whole batch
                     val_loss, val_acc, hist_loss, hist_acc = self.evaluate(transformer,i.dataset,o.dataset, self.criterion)
 
-                    
-                    tbatch.set_postfix(trainloss=train_loss, trainaccuracy=train_acc,val_loss=val_loss,val_acc=val_acc)
+                    tepoch.set_description(f"Epoch {epochs}")
+                    tepoch.set_postfix(trainloss=train_loss, trainaccuracy=train_acc,val_loss=val_loss,val_acc=val_acc)
                     
                    # print((f"\nEpoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s\n"))
 
-                   
+                    #fine tune whole datasets of batches file
+                self.fine_tune(transformer,i.dataset,o.dataset,optimizer=optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+                self.fine_tune(transformer,ti.dataset,to.dataset,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
 
-                    model_save_path = "model_checkpoint.pth"
-                    print("\nsave model\n")
-                    self.save_model(model_save_path)
+                model_save_path = "model_checkpoint.pth"
+                print("\nsave model\n")
+                self.save_model(model_save_path)
+
+
 
 
 

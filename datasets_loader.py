@@ -39,11 +39,11 @@ class Datasets:
         # self.set_tokenizer.sep_token = self.set_tokenizer.eos_token
         # self.set_tokenizer.pad_token = self.set_tokenizer.eos_token
         
-        #self.set_tokenizer = BertTokenizerFast(tokenizer_file=self.token_path)
-        self.set_tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+        self.set_tokenizer = BertTokenizerFast(tokenizer_file=self.token_path)
+       # self.set_tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
         # self.model = GPT2Model.from_pretrained('gpt2').cuda()
-        #self.model = BertModel.from_pretrained('bert-base-uncased').cuda()
-        #self.model.eval()
+        self.model = BertModel.from_pretrained('bert-base-uncased').cuda()
+        self.model.eval()
 
         #self.find_datasets = self.Datasets_Finder(self.path)
         
@@ -230,7 +230,7 @@ class Datasets:
         
             rowcount += len(data[label])
 
-            q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding=True,max_length=max_length,
+            q_encode = self.set_tokenizer.batch_encode_plus(data[label],padding='longest',max_length=max_length,
                                                             truncation=True,add_special_tokens = True,
                                                             return_attention_mask = True, return_tensors='pt')
             
