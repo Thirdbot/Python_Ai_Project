@@ -188,18 +188,20 @@ class Transformers:
                 count = 0
                 losses = 0
                 acc = 0
+    
                 with tqdm(zip(i,o), position=0, leave=True) as tbatch:
                     for list_inin,list_outout in tbatch:
+                        self.fine_tune(transformer,i.dataset,o.dataset,optimizer=optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
                         count += 1
                         tbatch.set_description(f"Batch step{count}")
 
                         list_inin = list_inin.cuda()
                         list_outout = list_outout.cuda()
 
-                        qdecode = datasetss.decode(list_inin[:,:-1])
-                        adecode = datasetss.decode(list_outout[:,:-1])
-                        print(f"\nQuestion: {qdecode}\nAnswer{adecode}\n")
-                        output,_ = transformer(list_inin, list_outout[:,:-1],cache=None)
+                        # qdecode = datasetss.decode(list_inin[:,:-1])
+                        # adecode = datasetss.decode(list_outout[:,:-1])
+                        # print(f"\nQuestion: {qdecode}\nAnswer{adecode}\n")
+                        output,_ = transformer(list_inin, list_outout[:,:,-1])
                         #output = self.transformer(list_inin, list_outout)
 
                     
@@ -252,25 +254,38 @@ class Transformers:
 
 
     def fine_tune(self,model,d_in,d_out, optimizer, criterion, num_epochs):
-        model.train()
+        
+        
+        generator = torch.Generator(device='cuda')
+        #data_loader = DataLoader(list(zip(d_in, d_out)), shuffle=True,batch_size=100, pin_memory=True, num_workers=4,generator=generator)
         data_loader = zip(d_in,d_out)
         for epoch in range(num_epochs):
             total_loss = 0
+           
+            cache = [None] * len(self.transformer.decoder_layers)
             for src, tgt in data_loader:
-                src = src.cuda()
-                tgt = tgt.cuda()
+                
+                src = src.cuda(non_blocking=True)
+                tgt = tgt.cuda(non_blocking=True)
                 src = src.unsqueeze(0)
                 tgt = tgt.unsqueeze(0)
                 self.optimizer.zero_grad()
-                
-                # Forward pass
-                output, _ = model(src, tgt[:,:-1], cache=None)  # No caching during training
-                
-                # Compute loss
-                loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), tgt[:, 1:].contiguous().view(-1))
+                store_tgt = torch.zeros(src.shape[0], 1, dtype=torch.long).to("cuda")
+                for i in range(98):
+                    model.eval()
+                    output, cache = model(src, store_tgt[:, -1:], cache=cache)
+                    next_token = output[:, -1, :].argmax(dim=-1, keepdim=True)
+                    #output = output.contiguous().view(-1,self.tgt_vocab_size)
+                    
+                    store_tgt = torch.cat((store_tgt, next_token),dim=1)
+                print(store_tgt.float().contiguous().view(-1))
+                model.train()
+                # print(store_tgt.contiguous().view(-1))
+                print(tgt[:, 1:].contiguous().view(-1))
+                loss = criterion(store_tgt.float().contiguous().view(-1), tgt[:, 1:].long().contiguous().view(-1))
                 total_loss += loss.item()
                 
-                # Backward pass and optimization
+                    # Backward pass and optimization
                 loss.backward()
                 optimizer.step()
             #print(f'\nEpoch {epoch + 1}/{num_epochs}, Loss: {total_loss / len(tgt)}')
