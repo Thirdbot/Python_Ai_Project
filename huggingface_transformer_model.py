@@ -171,7 +171,7 @@ class Transformers:
         data = self.batch_sample(list_input,list_output)
         test_data = self.batch_sample(test_input,test_output)
 
-        with tqdm(range(1,self.n_epochs+1), position=1, leave=False) as tepoch:
+        with tqdm(range(1,self.n_epochs+1), position=0, leave=True) as tepoch:
             
             history_loss = []
             history_acc = []
@@ -192,7 +192,7 @@ class Transformers:
                 losses = 0
                 acc = 0
     
-                with tqdm(data, position=0, leave=True) as tbatch:
+                with tqdm(data, position=1, leave=False) as tbatch:
                     for list_inin,list_outout in tbatch:
                         
                         count += 1
@@ -242,13 +242,13 @@ class Transformers:
                    # print((f"\nEpoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s\n"))
 
                     #fine tune whole datasets of batches file
-                with tqdm(data, position=0, leave=True) as tune:
-                    for tune_in,tune_out in tune:
-                        tune.set_description(f"Tune train")
-                        self.fine_tune(transformer,tune_in,tune_out,optimizer=optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
-                with tqdm(test_data, position=0, leave=True) as ttune:
+                # with tqdm(data, position=2, leave=False) as tune:
+                #     for tune_in,tune_out in tune:
+                #         tune.set_description(f"Tune train")
+                #         self.fine_tune(transformer,tune_in,tune_out,optimizer=optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+                with tqdm(test_data, position=2, leave=False) as ttune:
                     for test_in,test_output in ttune:
-                        tune.set_description(f"Tune test")
+                        ttune.set_description(f"Tune test")
                         self.fine_tune(transformer,test_in,test_output,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
 
                 model_save_path = "model_checkpoint.pth"
