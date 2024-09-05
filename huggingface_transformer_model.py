@@ -25,16 +25,16 @@ class Transformers:
         self.src_vocab_size = 25000
         self.tgt_vocab_size = 25000
         self.d_model = 768
-        self.num_heads = 16
-        self.num_layers = 12
+        self.num_heads = 8
+        self.num_layers = 6
         self.d_ff = 2048
         # max_seq_length = 100
-        self.dropout = 0.5
+        self.dropout = 0.4
         self.lr = 0.0001
         self.word_size = 25000
         
-        self.n_epochs = 10
-        self.batch = 32 #batch in this refer to batch for training
+        self.n_epochs = 100
+        self.batch = 64 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
@@ -103,7 +103,7 @@ class Transformers:
             #print(sentence)
             sentence = sentence.splitlines()
             embbed_sent = self.ListEmbeddings(sentence,100)
-            
+            print(embbed_sent)
             embbed_sent = embbed_sent.to("cuda")  # Ensure embeddings are on the correct device
             tgt_data = self.generate(self.transformer,embbed_sent,100)
             #tgt_data = self.top_p_sampling(self.transformer,embbed_sent,100,p=0.5)
@@ -158,14 +158,14 @@ class Transformers:
 
         # return input_loader,output_loader
 
-        loader = DataLoader(list(zip(inpt.cpu(),outp.cpu())), batch_size=self.batch, num_workers=4,shuffle=True,pin_memory=True,generator=self.generator)
+        loader = DataLoader(list(zip(inpt.cpu(),outp.cpu())), batch_size=self.batch, num_workers=4,shuffle=False,pin_memory=True,generator=self.generator)
         return loader
 
     def runtrain(self,list_input,list_output,test_input,test_output):
         if os.path.exists("model_checkpoint.pth"):
             self.transformer = self.load_model(path="model_checkpoint.pth")
-        transformer = nn.DataParallel(self.transformer)
-        optimizer = torch.optim.Adam(transformer.parameters(), lr=self.lr, betas=(0.9, 0.98), eps=1e-9)
+        #transformer = nn.DataParallel(self.transformer)
+        optimizer = torch.optim.Adam(self.transformer.parameters(), lr=self.lr, betas=(0.9, 0.98), eps=1e-9)
         datasetss = Datasets()
         
         data = self.batch_sample(list_input,list_output)
@@ -185,14 +185,14 @@ class Transformers:
 
                 ####implement dppo for data linked between labels or datasets input model (multimodal)
                 
-                transformer.train()
+                self.transformer.train()
                
                 
                 count = 0
                 losses = 0
                 acc = 0
     
-                with tqdm(data, position=1, leave=False) as tbatch:
+                with tqdm(data, position=1, leave=True) as tbatch:
                     for list_inin,list_outout in tbatch:
                         
                         count += 1
@@ -204,22 +204,22 @@ class Transformers:
                         # qdecode = datasetss.decode(list_inin[:,:-1])
                         # adecode = datasetss.decode(list_outout[:,:-1])
                         # print(f"\nQuestion: {qdecode}\nAnswer{adecode}\n")
-                        output,_ = transformer(list_inin, list_outout[:,:-1])
+                        output,_ = self.transformer(list_inin, list_outout)
                         #output = self.transformer(list_inin, list_outout)
 
                     
                         
                         # loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
                     
-                        loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
+                        loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout.contiguous().view(-1))
 
                         loss.backward()
 
                         losses += loss.item()
 
                         preds = output.argmax(dim=-1)
-                        masked_pred = preds * (list_outout[:, 1:]!=0)
-                        accuracy = (masked_pred == list_outout[:, 1:]).float().mean()
+                        masked_pred = preds * (list_outout!=0)
+                        accuracy = (masked_pred == list_outout).float().mean()
                         acc += accuracy.item()
 
                         optimizer.step()
@@ -234,7 +234,7 @@ class Transformers:
                     end_time = time.time()
 
                     #loss,acc of whole batch
-                    val_loss, val_acc, hist_loss, hist_acc = self.evaluate(transformer,list_inin,list_outout, self.criterion)
+                    val_loss, val_acc, hist_loss, hist_acc = self.evaluate(self.transformer,list_inin,list_outout, self.criterion)
 
                     tepoch.set_description(f"Epoch {epochs}")
                     tepoch.set_postfix(trainloss=train_loss, trainaccuracy=train_acc,val_loss=val_loss,val_acc=val_acc)
@@ -242,13 +242,13 @@ class Transformers:
                    # print((f"\nEpoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s\n"))
 
                     #fine tune whole datasets of batches file
-                with tqdm(data.dataset, position=2, leave=False) as tune:
-                    tune.set_description(f"Tune train")
-                    self.fine_tune(transformer,tune,optimizer=optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+                # with tqdm(data.dataset, position=2, leave=True) as tune:
+                #     tune.set_description(f"Tune train")
+                #     self.fine_tune(transformer,tune,optimizer=optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
 
-                with tqdm(test_data.dataset, position=3, leave=False) as ttune:
-                    ttune.set_description(f"Tune test")
-                    self.fine_tune(transformer,ttune,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+                # with tqdm(test_data.dataset, position=3, leave=True) as ttune:
+                #     ttune.set_description(f"Tune test")
+                #     self.fine_tune(transformer,ttune,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
 
                 model_save_path = "model_checkpoint.pth"
                 print("\nsave model\n")
@@ -276,7 +276,7 @@ class Transformers:
                 self.optimizer.zero_grad()
                 
                 # # Forward pass
-                output, _ = model(src, tgt, cache=None)  # No caching during training
+                output, _ = model(src, tgt[:,:-1], cache=None)  # No caching during training
                 
                 # Compute loss
                 loss = criterion(output[:,1:].contiguous().view(-1, self.tgt_vocab_size), tgt[:, 1:].contiguous().view(-1))
@@ -307,14 +307,14 @@ class Transformers:
                     
                 x = x.unsqueeze(0)
                 y = y.unsqueeze(0)
-                logits,_ = model(x, y[:,:-1])
+                logits,_ = model(x, y)
 
-                loss = loss_fn(logits.contiguous().view(-1, self.tgt_vocab_size), y[:, 1:].contiguous().view(-1))
+                loss = loss_fn(logits.contiguous().view(-1, self.tgt_vocab_size), y.contiguous().view(-1))
                 losses += loss.item()
                 
                 preds = logits.argmax(dim=-1)
-                masked_pred = preds * (y[:, 1:]!=0)
-                accuracy = (masked_pred == y[:, 1:]).float().mean()
+                masked_pred = preds * (y!=0)
+                accuracy = (masked_pred == y).float().mean()
                 acc += accuracy.item()
                 
                 history_loss.append(loss.item())
