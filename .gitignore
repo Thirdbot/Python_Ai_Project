@@ -5,3 +5,4 @@ datasets/counsel_chat_embeddings.feather
 datasets/Jarvis_RW_embeddings.feather
 
 model_checkpoint.pth
+meta-llama/Meta-Llama-3-8B-Instruct

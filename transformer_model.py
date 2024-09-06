@@ -242,9 +242,9 @@ class Transformers:
                     #     ttune.set_description(f"Tune test")
                     #     self.fine_tune(transformer,ttune,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
 
-                    model_save_path = "model_checkpoint.pth"
-                    print("\nsave model\n")
-                    self.save_model(model_save_path)
+            model_save_path = "model_checkpoint.pth"
+            print("\nsave model\n")
+            self.save_model(model_save_path)
 
 
 
