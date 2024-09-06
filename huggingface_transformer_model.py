@@ -1,6 +1,61 @@
 import torch
 import transformers
 from transformers import BitsAndBytesConfig
+from transformers import LlamaTokenizer
+from transformers import AutoModelForCausalLM
+from transformers import TrainingArguments
+from transformers import Trainer
+
+from datasets import load_dataset
+
+class Finetune():
+    def __init__(self,datasets:str) -> None:
+        self.dataset =  load_dataset(datasets)
+        self.tokenized_dataset = self.dataset.map(self.tokenize_function, batched=True)
+        self.model = AutoModelForCausalLM.from_pretrained(
+                    "meta-llama/Meta-Llama-3-8B-Instruct",
+                    load_in_4bit=True,
+                    torch_dtype=torch.float16,)
+        self.tokenizer = LlamaTokenizer.from_pretrained("meta-llama/Meta-Llama-3-8B-Instruct")
+
+        self.training_args = TrainingArguments(
+                        output_dir="./llama-finetuned",
+                        per_device_train_batch_size=4,
+                        per_device_eval_batch_size=4,
+                        num_train_epochs=3,
+                        logging_dir="./logs",
+                        save_steps=1000,
+                        save_total_limit=2,
+                        evaluation_strategy="steps",
+                        eval_steps=500,
+                        logging_steps=200,
+                        learning_rate=2e-5,
+                        fp16=True,  # Enable mixed precision for faster training
+                        gradient_accumulation_steps=4,  # Useful if memory is limited
+                        warmup_steps=100,
+                    )
+        self.trainer = Trainer(
+                model=self.model,
+                args=self.training_args,
+                train_dataset=self.tokenized_dataset["train"],
+                eval_dataset=self.tokenized_dataset["validation"],
+                tokenizer=self.tokenizer,
+            )
+        
+        self.trainer.train()
+
+        self.model.save_pretrained("./llama-finetuned")
+        self.tokenizer.save_pretrained("./llama-finetuned")
+
+    def tokenize_function(self,example):
+        return self.tokenizer(
+            example["prompt"], 
+            padding="max_length", 
+            truncation=True, 
+            max_length=512,
+            return_tensors="pt"
+        )
+    
 
 class Llama3:
     def __init__(self, model_path):
