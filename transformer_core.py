@@ -128,7 +128,7 @@ class Transformer(nn.Module):
 
         self.fc = nn.Linear(d_model, tgt_vocab_size)
         #self.fc = nn.Linear(d_model, max_seq_length)
-        self.dropout = nn.Dropout(dropout).to('cuda')
+        self.dropout = nn.Dropout(dropout)
 
     def generate_mask(self, src, tgt):
         src_mask = (src != 0).unsqueeze(1).unsqueeze(2)
@@ -163,11 +163,3 @@ class Transformer(nn.Module):
         output = self.fc(dec_output)
         return output, new_caches
     
-
-
-
-
-
-# # Generate random sample data
-# src_data = torch.randint(1, src_vocab_size, (64, max_seq_length))  # (batch_size, seq_length)
-# tgt_data = torch.randint(1, tgt_vocab_size, (64, max_seq_length))  # (batch_size, seq_length)

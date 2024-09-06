@@ -34,7 +34,7 @@ class Transformers:
         self.word_size = 25000
         
         self.n_epochs = 100
-        self.batch = 32 #batch in this refer to batch for training
+        self.batch = 64 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
@@ -103,7 +103,7 @@ class Transformers:
             #print(sentence)
             sentence = sentence.splitlines()
             embbed_sent = self.ListEmbeddings(sentence,100)
-            
+            print(embbed_sent)
             embbed_sent = embbed_sent.to("cuda")  # Ensure embeddings are on the correct device
             tgt_data = self.generate(self.transformer,embbed_sent,100)
             #tgt_data = self.top_p_sampling(self.transformer,embbed_sent,100,p=0.5)
@@ -164,34 +164,26 @@ class Transformers:
     def runtrain(self,list_input,list_output,test_input,test_output):
         if os.path.exists("model_checkpoint.pth"):
             self.transformer = self.load_model(path="model_checkpoint.pth")
-        transformer = nn.DataParallel(self.transformer)
-        optimizer = torch.optim.Adam(transformer.parameters(), lr=self.lr, betas=(0.9, 0.98), eps=1e-9)
+        #transformer = nn.DataParallel(self.transformer)
+        #optimizer = torch.optim.Adam(self.transformer.parameters(), lr=self.lr, betas=(0.9, 0.98), eps=1e-9)
         datasetss = Datasets()
         
         data = self.batch_sample(list_input,list_output)
         test_data = self.batch_sample(test_input,test_output)
 
         with tqdm(range(1,self.n_epochs+1), position=0, leave=True) as tepoch:
-            
-            history_loss = []
-            history_acc = []
-
             # i,o = self.batch_sample(list_input,list_output)
 
             for epochs in tepoch:
                 start_time = time.time()  
-              
-                
-
-                ####implement dppo for data linked between labels or datasets input model (multimodal)
-                
-                transformer.train()
-               
-                
                 count = 0
                 losses = 0
                 acc = 0
-    
+            
+                ####implement dppo for data linked between labels or datasets input model (multimodal)
+                
+                self.transformer.train()
+
                 with tqdm(data, position=1, leave=True) as tbatch:
                     for list_inin,list_outout in tbatch:
                         
@@ -204,37 +196,37 @@ class Transformers:
                         # qdecode = datasetss.decode(list_inin[:,:-1])
                         # adecode = datasetss.decode(list_outout[:,:-1])
                         # print(f"\nQuestion: {qdecode}\nAnswer{adecode}\n")
-                        output,_ = transformer(list_inin, list_outout[:,:-1])
+                        output,_ = self.transformer(list_inin, list_outout[:,:-1])
                         #output = self.transformer(list_inin, list_outout)
 
                     
                         
                         # loss = criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
                     
-                        loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:, 1:].contiguous().view(-1))
+                        loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size), list_outout[:,1:].contiguous().view(-1))
 
                         loss.backward()
 
                         losses += loss.item()
 
                         preds = output.argmax(dim=-1)
-                        masked_pred = preds * (list_outout[:, 1:]!=0)
-                        accuracy = (masked_pred == list_outout[:, 1:]).float().mean()
+                        masked_pred = preds * (list_outout[:,1:]!=0)
+                        accuracy = (masked_pred == list_outout[:,1:]).float().mean()
                         acc += accuracy.item()
 
-                        optimizer.step()
-                        optimizer.zero_grad()
+                        self.optimizer.step()
+                        self.optimizer.zero_grad()
                         #tepoch.set_postfix(loss=loss.item(), accuracy=100. * accuracy.item())
 
                     #loss,acc of batch element
-                    train_loss, train_acc, hist_loss, hist_acc = losses / len(list_outout), acc / len(list_outout), history_loss, history_acc
+                    train_loss, train_acc = losses / len(list_outout), acc / len(list_outout)
 
                     print("\nSize: ",count)
 
                     end_time = time.time()
 
                     #loss,acc of whole batch
-                    val_loss, val_acc, hist_loss, hist_acc = self.evaluate(transformer,list_inin,list_outout, self.criterion)
+                    val_loss, val_acc = self.evaluate(self.transformer,list_inin,list_outout, self.criterion)
 
                     tepoch.set_description(f"Epoch {epochs}")
                     tepoch.set_postfix(trainloss=train_loss, trainaccuracy=train_acc,val_loss=val_loss,val_acc=val_acc)
@@ -242,17 +234,17 @@ class Transformers:
                    # print((f"\nEpoch: {epochs}, Train loss: {train_loss:.3f}, Train acc: {train_acc:.3f}, Val loss: {val_loss:.3f}, Val acc: {val_acc:.3f} "f"Epoch time = {(end_time - start_time):.3f}s\n"))
 
                     #fine tune whole datasets of batches file
-                # with tqdm(data.dataset, position=2, leave=True) as tune:
-                #     tune.set_description(f"Tune train")
-                #     self.fine_tune(transformer,tune,optimizer=optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+                    # with tqdm(data.dataset, position=2, leave=True) as tune:
+                    #     tune.set_description(f"Tune train")
+                    #     self.fine_tune(transformer,tune,optimizer=optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
 
-                # with tqdm(test_data.dataset, position=3, leave=True) as ttune:
-                #     ttune.set_description(f"Tune test")
-                #     self.fine_tune(transformer,ttune,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
+                    # with tqdm(test_data.dataset, position=3, leave=True) as ttune:
+                    #     ttune.set_description(f"Tune test")
+                    #     self.fine_tune(transformer,ttune,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
 
-                model_save_path = "model_checkpoint.pth"
-                print("\nsave model\n")
-                self.save_model(model_save_path)
+                    model_save_path = "model_checkpoint.pth"
+                    print("\nsave model\n")
+                    self.save_model(model_save_path)
 
 
 
@@ -292,8 +284,7 @@ class Transformers:
        
         losses = 0
         acc = 0
-        history_loss = []
-        history_acc = []
+        
         data = zip(inpt,out)
         with tqdm(data, position=1, leave=False) as tbatch:
             model.eval()
@@ -309,18 +300,16 @@ class Transformers:
                 y = y.unsqueeze(0)
                 logits,_ = model(x, y[:,:-1])
 
-                loss = loss_fn(logits.contiguous().view(-1, self.tgt_vocab_size), y[:, 1:].contiguous().view(-1))
+                loss = loss_fn(logits.contiguous().view(-1, self.tgt_vocab_size), y[:,1:].contiguous().view(-1))
                 losses += loss.item()
                 
                 preds = logits.argmax(dim=-1)
-                masked_pred = preds * (y[:, 1:]!=0)
-                accuracy = (masked_pred == y[:, 1:]).float().mean()
+                masked_pred = preds * (y[:,1:]!=0)
+                accuracy = (masked_pred == y[:,1:]).float().mean()
                 acc += accuracy.item()
                 
-                history_loss.append(loss.item())
-                history_acc.append(accuracy.item())
 
-            return losses/len(out) , acc/len(out) , history_loss, history_acc
+            return losses/len(out) , acc/len(out)
 
 
                     

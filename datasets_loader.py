@@ -308,7 +308,7 @@ class Datasets:
 
 
     def decode(self,encode):
-        return self.set_tokenizer.batch_decode(encode,skip_special_tokens=True,clean_up_tokenization_spaces=True)
+        return self.set_tokenizer.batch_decode(encode,skip_special_tokens=True)
         
 if __name__ == "__main__":
     datasets = Datasets()

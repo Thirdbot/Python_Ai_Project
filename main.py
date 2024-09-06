@@ -9,7 +9,7 @@ from custom_tokenizer import *
 # from transformers import GPT2TokenizerFast
 import torch
 #from transformer_model import Transformers
-from huggingface_transformer_model import Transformers
+from transformer_model import Transformers
 import torch.nn.utils.rnn as rnn_utils
 import pandas as pd
 import pyarrow.parquet as pq
@@ -62,7 +62,7 @@ class Program:
                         self.outputs = self.soupDatasets(data_path,couple[1],'train',self.make_file)
                         self.tinputs = self.soupDatasets(data_path,couple[0],'test',self.make_file)
                         self.toutputs = self.soupDatasets(data_path,couple[1],'test',self.make_file)
-                        
+
                         #train valid
                         transformer_model.runtrain(self.inputs,self.outputs,self.tinputs,self.toutputs)
                         #test valid
@@ -111,7 +111,7 @@ class Program:
             padded_embeds = padded_embeds[:target_length]
             # padded_embeds.transpose(-1,0).to("cuda")
     
-        return padded_embeds
+        return padded_embeds.cuda()
     
 
     #it work
@@ -146,10 +146,10 @@ class Program:
                     batch.append(padd_arr.to(dtype=int))
                 saved = torch.stack(batch)
                 
-            result = torch.cat([saved]).to("cuda")
+            result = torch.cat([saved])
                     #batch = []
             #result.append(saved)
-            return torch.stack([obj for obj in result])
+            return torch.stack([obj.cuda() for obj in result])
             #return saved.cuda()
                 
             
