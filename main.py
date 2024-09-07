@@ -43,7 +43,7 @@ class Program:
         self.file_csv = self.find_datasets(self.datapath,".csv")
         
         #recommend turn to False just to re embeddings it each time(faster than fetch through .json file)
-        self.make_file = False
+        self.make_file = True
 
 
         

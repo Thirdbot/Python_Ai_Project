@@ -39,7 +39,7 @@ class Datasets:
         # self.set_tokenizer.sep_token = self.set_tokenizer.eos_token
         # self.set_tokenizer.pad_token = self.set_tokenizer.eos_token
         
-        self.set_tokenizer = BertTokenizerFast(tokenizer_file=self.token_path)
+        self.set_tokenizer = BertTokenizerFast(tokenizer_file=self.token_path,clean_up_tokenization_spaces=True)
        # self.set_tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
         # self.model = GPT2Model.from_pretrained('gpt2').cuda()
         self.model = BertModel.from_pretrained('bert-base-uncased').cuda()
@@ -153,7 +153,7 @@ class Datasets:
             for columns in features:
                 train_corpus = self.get_train_corpus(split_datasets,batch)
                 test_corpus = self.get_test_corpus(split_datasets,batch)
-                
+
                 mem_col[data_path].append(columns)
 
                 

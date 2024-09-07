@@ -1,8 +1,8 @@
 
 
-datasets/chatbot_dataset_embeddings.feather
-datasets/counsel_chat_embeddings.feather
-datasets/Jarvis_RW_embeddings.feather
+datasets
+้ีhuggingface_datasets
+
+meta-llama/Meta-Llama-3-8B-Instruct
 
 model_checkpoint.pth
-meta-llama/Meta-Llama-3-8B-Instruct
