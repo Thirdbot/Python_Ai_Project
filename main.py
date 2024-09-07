@@ -43,7 +43,7 @@ class Program:
         self.file_csv = self.find_datasets(self.datapath,".csv")
         
         #recommend turn to False just to re embeddings it each time(faster than fetch through .json file)
-        self.make_file = True
+        self.make_file = False
 
 
         
@@ -152,15 +152,33 @@ class Program:
             return torch.stack([obj.cuda() for obj in result])
             #return saved.cuda()
                 
-            
-
+        
         else:
             make_path = f"datasets/{data_path}.csv"
             embedd_file = self.data_fetch['files'][make_path]
             #print(embedd_file[type].keys())
-            for rows in embedd_file[type][label]:
-                saved.append(torch.from_numpy(rows['embeddings']))
-            return saved
+            for stuff in embedd_file[type][label]['embeddings']:
+                for row in stuff:
+                    numpy_array =torch.stack([torch.tensor(np.array(obj),dtype=torch.long).to("cuda") for obj in row])
+                    #padd_arr = self.pad_array(numpy_array,self.pad_size)
+
+                    #padding
+                    padd_arr = self.pad_encode_array(numpy_array,self.pad_size)
+
+                    #no padding
+                    #batch.append(numpy_array.cuda())
+
+                    # batch = torch.tensor(batch).cuda()
+                    #turn into int because encode not embeddings
+                    batch.append(padd_arr.to(dtype=int))
+                saved = torch.stack(batch)
+                
+            result = torch.cat([saved])
+                    #batch = []
+            #result.append(saved)
+            return torch.stack([obj.cuda() for obj in result])
+            #return saved.cuda()
+
 
     def findcouple(self):
             info = self.load_jsons("file_info.json")
@@ -207,26 +225,6 @@ class Program:
     
 
 
-    # def print_hdf5_structure(self,group, indent=0):
-    #     # Print the group name
-    #     print('  ' * indent + group.name)
-    #     # Iterate over all items in the group
-    #     for key, item in group.items():
-    #         if isinstance(item, h5py.Group):
-    #             # If the item is a group, print its name and recurse
-    #             self.print_hdf5_structure(item, indent + 1)
-    #         elif isinstance(item, h5py.Dataset):
-    #             # If the item is a dataset, print its name
-    #             print('  ' * (indent + 1) + key)
-
-    # def load_hdf5(self,file_path):
-    #     with h5py.File(file_path, 'r') as f:
-    #         self.print_hdf5_structure(f)
-    #         dataset = da.from_array(f['file'], chunks=(1000, 1000))
-    #         return dataset
-        
-
-
     def load_jsons(self, file_path):
         with open(file_path, 'rb') as file:
             df = pd.read_json(file)
@@ -254,6 +252,7 @@ class Program:
                 #batch
 
                 file = setsdata.datasets_fetch([path],self.batch)
+                
                 #this is how its fetch
                 #print(file[path]['train']['Question'][11]['embeddings'])
                 self.data_fetch['files'].update(file)
