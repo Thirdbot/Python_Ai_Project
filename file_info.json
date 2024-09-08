@@ -23,6 +23,10 @@
     "datasets/Jarvis_RW copy.csv": [
       "Tony Stark",
       "Jarvis"
+    ],
+    "datasets/finetune_dataset_demo.csv": [
+      "Question",
+      "Answer"
     ]
   }
 }

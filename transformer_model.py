@@ -34,7 +34,7 @@ class Transformers:
         self.word_size = 25000
         
         self.n_epochs = 100
-        self.batch = 64 #batch in this refer to batch for training
+        self.batch = 32 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
@@ -76,7 +76,7 @@ class Transformers:
     def generate(self,model, src, max_length):
         src = src.to('cuda')
         model.eval()
-        
+        end_token = 0
         #tgt = torch.zeros((1, 1)).long().to('cuda')  
         tgt = torch.zeros(src.shape[0], 1, dtype=torch.long).to("cuda")
         cache = [None] * len(model.decoder_layers)
@@ -85,7 +85,7 @@ class Transformers:
             output, cache = model(src, tgt[:, -1:], cache=cache)
             next_token = output[:, -1, :].argmax(dim=-1, keepdim=True)
             tgt = torch.cat([tgt, next_token], dim=1)
-            if next_token.item() == 2:  # assuming 2 is the end token
+            if next_token.item() == end_token:  # assuming 2 is the end token
                 break
         
         return tgt
@@ -311,12 +311,6 @@ class Transformers:
 
             return losses/len(out) , acc/len(out)
 
-
-                    
-# Credit to Arjun Sarkar and my tweak            
-                    
-                    
-                    
 
         
 
