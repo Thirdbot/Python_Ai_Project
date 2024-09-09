@@ -41,7 +41,7 @@ class Tokenization:
         #using Bert to seperate in space and punctuation
         #tokenizer.pre_tokenizer = pre_tokenizers.BertPreTokenizer()
         #byte level seperation
-        tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=True)
+        tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel()
 
         #word piece
         #specials tokens defined
@@ -51,7 +51,7 @@ class Tokenization:
         
         #byte pair
         #set trainers with one special tokens at the end
-        trainer = trainers.BpeTrainer(vocab_size=25000,min_frequency=2, special_tokens=special_tokens)
+        trainer = trainers.BpeTrainer(vocab_size=25000, special_tokens=special_tokens)
         #get each batch sector from datasets to train tokenizer
 
         tokenizer.train_from_iterator(self.get_wiki_corpus(),trainer=trainer)
@@ -60,31 +60,33 @@ class Tokenization:
         #tokenizer.train(["wiki.txt"], trainer=trainer)
 
 
-        ##define seperator between sentence
-        # cls_token_id = tokenizer.token_to_id("[CLS]")
-        # sep_token_id = tokenizer.token_to_id("[SEP]")
+        #define seperator between sentence
+        cls_token_id = tokenizer.token_to_id("[CLS]")
+        sep_token_id = tokenizer.token_to_id("[SEP]")
 
-        # tokenizer.post_processor = processors.TemplateProcessing(
-        #     single=f"[CLS]:0 $A:0 [SEP]:0",
-        #     pair=f"[CLS]:0 $A:0 [SEP]:0 $B:1 [SEP]:1",
-        #     special_tokens=[("[CLS]", cls_token_id), ("[SEP]", sep_token_id)],
-        # )
+        tokenizer.post_processor = processors.TemplateProcessing(
+            single=f"[CLS]:0 $A:0 [SEP]:0",
+            pair=f"[CLS]:0 $A:0 [SEP]:0 $B:1 [SEP]:1",
+            special_tokens=[("[CLS]", cls_token_id), ("[SEP]", sep_token_id)],
+        )
+
         # cls_token_id = tokenizer.token_to_id("[CLS]")
         # sep_token_id = tokenizer.token_to_id("<|endoftext|>")
         # pad_token_id = tokenizer.token_to_id("[PAD]")
 
         # tokenizer.post_processor = processors.TemplateProcessing(
         #     single=f"[CLS]:0 $A:0 [SEP]:0",
-        #     pair=f"[CLS]:0 $A:0 [SEP]:0 $B:1 [SEP]:1",
-        #     special_tokens=[
-        #         ("[CLS]", cls_token_id), 
-        #         ("<|endoftext|>", sep_token_id),
-        #         ("[PAD]", pad_token_id)
-        #     ],
+        #     pair=f"[CLS]:0 $A:0 [SEP]:0 $B:1 [SEP]:1"
+        #     # # special_tokens=[
+        #     # #     ("[CLS]", cls_token_id), 
+        #     # #     ("<|endoftext|>", sep_token_id),
+        #     # #     ("[PAD]", pad_token_id)
+        #     # ],
+            
         # )
         
         #include whitespace in merging
-        #tokenizer.post_processor = processors.BertProcessing(sep=("[SEP]",2),cls=("[CLS]",1))
+        tokenizer.post_processor = processors.ByteLevel()
 
         #set merge word
         #tokenizer.decoder = decoders.WordPiece(prefix="##",cleanup=True)

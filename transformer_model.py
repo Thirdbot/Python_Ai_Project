@@ -33,7 +33,7 @@ class Transformers:
         self.lr = 0.0001
         self.word_size = 25000
         
-        self.n_epochs = 100
+        self.n_epochs = 300
         self.batch = 64 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
@@ -140,7 +140,7 @@ class Transformers:
         embeds = []
         sequence_lengths = []
 
-        embed_input = datasets_Detail.set_tokenizer.batch_encode_plus(list_input, padding='max_length',truncation=True,add_special_tokens = True,return_attention_mask = True,max_length=word_size, return_tensors='pt')
+        embed_input = datasets_Detail.set_tokenizer.batch_encode_plus(list_input, padding='longest',truncation=True,add_special_tokens = True,return_attention_mask = True,max_length=word_size, return_tensors='pt')
         
         #embedded_model = GPT2Model.from_pretrained('gpt2')
         tensor_id = embed_input['input_ids'].long()
