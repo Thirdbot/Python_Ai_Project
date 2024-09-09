@@ -34,7 +34,7 @@ class Transformers:
         self.word_size = 25000
         
         self.n_epochs = 100
-        self.batch = 32 #batch in this refer to batch for training
+        self.batch = 64 #batch in this refer to batch for training
 
         self.transformer = Transformer(self.src_vocab_size, self.tgt_vocab_size, self.d_model, self.num_heads, self.num_layers, self.d_ff, self.word_size, self.dropout)
         
@@ -242,9 +242,9 @@ class Transformers:
                     #     ttune.set_description(f"Tune test")
                     #     self.fine_tune(transformer,ttune,optimizer=self.optimizer,criterion=self.criterion,num_epochs=self.n_epochs)
 
-            model_save_path = "model_checkpoint.pth"
-            print("\nsave model\n")
-            self.save_model(model_save_path)
+                model_save_path = "model_checkpoint.pth"
+                print("\nsave model\n")
+                self.save_model(model_save_path)
 
 
 
